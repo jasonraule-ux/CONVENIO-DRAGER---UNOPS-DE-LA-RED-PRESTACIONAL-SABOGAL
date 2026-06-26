@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard OTM – Convenio UNOPS – Equipos Dräger – RPS</title>
+
+<!-- SheetJS para exportar Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- jsPDF para exportar PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<!-- Supabase para almacenamiento en la nube -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0"></script>
+
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:       #0A2342;
+  --navy-mid:   #133B6B;
+  --blue:       #1B5EA8;
+  --celeste:    #2E86C1;
+  --sky:        #5DADE2;
+  --sky-light:  #AED6F1;
+  --white:      #FFFFFF;
+  --off-white:  #F4F7FB;
+  --gray-light: #E8EEF6;
+  --gray:       #8FA8C8;
+  --gray-dark:  #4A6080;
+  --green:      #1A9E5C;
+  --green-bg:   #E6F9F0;
+  --red:        #C0392B;
+  --red-bg:     #FDEDEB;
+  --amber:      #E67E22;
+  --amber-bg:   #FEF5E7;
+  --shadow-sm:  0 2px 8px rgba(10,35,66,.08);
+  --shadow-md:  0 4px 20px rgba(10,35,66,.13);
+  --shadow-lg:  0 8px 32px rgba(10,35,66,.18);
+  --radius:     12px;
+  --radius-sm:  8px;
+  --radius-xs:  5px;
+  --transition: .25s ease;
+}
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--off-white);
+  color: var(--navy);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ===== HEADER ===== */
+.header {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 60%, var(--blue) 100%);
+  color: var(--white);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 32px;
+}
+.header-logo {
+  width: 52px; height: 52px;
+  background: rgba(255,255,255,.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,.3);
+}
+.header-text { flex: 1; }
+.header-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: .01em;
+}
+.header-subtitle {
+  font-size: 11px;
+  color: var(--sky-light);
+  margin-top: 4px;
+  line-height: 1.4;
+  max-width: 700px;
+}
+.header-meta {
+  text-align: right;
+  font-size: 11px;
+  color: var(--sky-light);
+  flex-shrink: 0;
+}
+.header-meta strong { color: var(--white); display: block; font-size: 13px; }
+
+/* ===== LAYOUT ===== */
+.container { max-width: 1700px; margin: 0 auto; padding: 24px 32px; }
+
+/* ===== UPLOAD SECTIONS ===== */
+.upload-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.upload-row.single-row {
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 24px;
+}
+.upload-section {
+  background: var(--white);
+  border: 2px dashed var(--sky);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: border-color var(--transition), background var(--transition);
+  cursor: pointer;
+}
+.upload-section:hover { border-color: var(--blue); background: var(--gray-light); }
+.upload-section.pdf-zone { border-color: var(--amber); }
+.upload-section.pdf-zone:hover { border-color: var(--red); }
+.upload-icon { font-size: 28px; flex-shrink: 0; }
+.upload-text h3 { font-size: 13px; font-weight: 700; color: var(--navy); }
+.upload-text p  { font-size: 11px; color: var(--gray-dark); margin-top: 3px; line-height: 1.4; }
+.btn-upload {
+  margin-left: auto;
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-upload:hover { background: var(--navy-mid); transform: translateY(-1px); }
+.btn-upload.amber { background: var(--amber); }
+.btn-upload.amber:hover { background: #c96c10; }
+.btn-upload.green { background: var(--green); }
+.btn-upload.green:hover { background: #157a47; }
+.pdf-count-badge {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-radius: 50px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+  display: inline-block;
+}
+#fileInput    { display: none; }
+#pdfFileInput { display: none; }
+
+/* ===== KPI GRID ===== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.kpi-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  border-top: 4px solid transparent;
+  transition: transform var(--transition), box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  right: -16px; top: -16px;
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  opacity: .07;
+  background: currentColor;
+}
+.kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.kpi-card.blue  { border-top-color: var(--blue);    color: var(--blue); }
+.kpi-card.green { border-top-color: var(--green);   color: var(--green); }
+.kpi-card.red   { border-top-color: var(--red);     color: var(--red); }
+.kpi-card.navy  { border-top-color: var(--navy);    color: var(--navy); }
+.kpi-card.sky   { border-top-color: var(--celeste); color: var(--celeste); }
+.kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-dark); }
+.kpi-value { font-size: 36px; font-weight: 800; line-height: 1.1; margin: 6px 0 4px; }
+.kpi-sub   { font-size: 11px; color: var(--gray); }
+
+/* ===== GAUGE ===== */
+.gauge-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+.gauge-left { flex: 1; }
+.gauge-title { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+.gauge-sub   { font-size: 12px; color: var(--gray-dark); margin-bottom: 20px; }
+.gauge-bar-wrap {
+  background: var(--gray-light);
+  border-radius: 50px;
+  height: 28px;
+  overflow: hidden;
+}
+.gauge-bar-fill {
+  height: 100%;
+  border-radius: 50px;
+  background: linear-gradient(90deg, var(--celeste), var(--blue));
+  transition: width 1.2s cubic-bezier(.4,0,.2,1);
+  position: relative;
+}
+.gauge-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: rgba(255,255,255,.5);
+  border-radius: 0 50px 50px 0;
+}
+.gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--gray);
+}
+.gauge-right { text-align: center; min-width: 160px; }
+.gauge-pct {
+  font-size: 60px;
+  font-weight: 900;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--blue), var(--sky));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gauge-pct-label { font-size: 12px; color: var(--gray-dark); font-weight: 600; margin-top: 4px; }
+.gauge-detail { display: flex; gap: 24px; margin-top: 20px; }
+.gauge-detail-item { text-align: center; }
+.gauge-detail-item .val { font-size: 22px; font-weight: 800; color: var(--navy); }
+.gauge-detail-item .lbl { font-size: 10px; color: var(--gray); text-transform: uppercase; letter-spacing: .05em; }
+
+/* ===== CHARTS (2 columnas) ===== */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.chart-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.chart-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+.chart-canvas-wrap { position: relative; height: 220px; }
+
+/* ===== FILTERS ===== */
+.filters-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.filters-label { font-size: 12px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0; }
+.filter-group { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 150px; }
+.filter-group label { font-size: 10px; font-weight: 600; color: var(--gray-dark); text-transform: uppercase; letter-spacing: .06em; }
+.filter-group select {
+  border: 1.5px solid var(--gray-light);
+  border-radius: var(--radius-xs);
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--navy);
+  background: var(--off-white);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238FA8C8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+.filter-group select:focus { outline: none; border-color: var(--blue); }
+.btn-clear-filter {
+  background: none;
+  border: 1.5px solid var(--gray-light);
+  padding: 7px 16px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-dark);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  align-self: flex-end;
+}
+.btn-clear-filter:hover { background: var(--gray-light); color: var(--navy); }
+
+/* ===== TABLE ===== */
+.table-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-light);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.table-title { font-size: 14px; font-weight: 700; color: var(--navy); }
+.table-count  { font-size: 12px; color: var(--gray-dark); margin-top: 2px; }
+.table-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.search-wrap { position: relative; }
+.search-wrap input {
+  border: 1.5px solid var(--gray-light);
+  border-radius: var(--radius-xs);
+  padding: 7px 12px 7px 32px;
+  font-size: 12px;
+  color: var(--navy);
+  background: var(--off-white);
+  width: 220px;
+  transition: border-color var(--transition);
+}
+.search-wrap input:focus { outline: none; border-color: var(--blue); }
+.search-wrap::before {
+  content: '🔍';
+  position: absolute;
+  left: 9px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  pointer-events: none;
+}
+.btn-export {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: all var(--transition);
+}
+.btn-export.excel { background: #E6F4EA; border-color: #34A853; color: #1E7E34; }
+.btn-export.excel:hover { background: #34A853; color: var(--white); }
+.btn-export.pdf   { background: #FDE8E8; border-color: #E53935; color: #B71C1C; }
+.btn-export.pdf:hover { background: #E53935; color: var(--white); }
+
+.table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th {
+  background: var(--navy);
+  color: var(--white);
+  padding: 11px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+}
+thead th:hover { background: var(--navy-mid); }
+thead th .sort-icon { margin-left: 4px; opacity: .5; font-size: 10px; }
+thead th.sorted .sort-icon { opacity: 1; }
+tbody tr { transition: background var(--transition); }
+tbody tr:nth-child(even) { background: var(--off-white); }
+tbody tr:hover { background: #E8F1FB; }
+tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertical-align: middle; white-space: nowrap; }
+
+/* ===== BADGES ===== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 50px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.badge-op-bueno   { background: #E6F9F0; color: #0E7A45; }
+.badge-op-regular { background: #FEF5E7; color: #9A5800; }
+.badge-op-malo    { background: #FDE8E8; color: #B71C1C; }
+.badge-inop       { background: #F8D7DA; color: #7B1D1D; }
+.badge-pendiente  { background: #FDE8E8; color: #B71C1C; }
+.badge-parcial    { background: #FEF5E7; color: #9A5800; }
+.badge-completo   { background: #E6F9F0; color: #0E7A45; }
+
+.badge-otm3-pendiente {
+  background: #FEF5E7;
+  color: #9A5800;
+  border: 1.5px solid #E67E22;
+}
+/* Banner de aviso 3er mantenimiento */
+.otm3-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #FEF5E7;
+  border: 1.5px solid var(--amber);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 0 0 0 0;
+  font-size: 12px;
+  color: #7A4500;
+  line-height: 1.5;
+}
+.otm3-notice-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.otm3-notice strong { color: var(--amber); display: block; margin-bottom: 2px; font-size: 12px; }
+.btn-ver-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid #1B5EA8;
+  background: #EBF3FC;
+  color: #1B5EA8;
+  transition: all var(--transition);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-ver-pdf:hover { background: #1B5EA8; color: var(--white); }
+
+/* ===== PAGINATION ===== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--gray-light);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pagination-info { font-size: 11px; color: var(--gray-dark); }
+.pagination-controls { display: flex; gap: 4px; align-items: center; }
+.page-btn {
+  background: var(--off-white);
+  border: 1.5px solid var(--gray-light);
+  width: 30px; height: 30px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+.page-btn:hover:not(:disabled) { background: var(--blue); color: var(--white); border-color: var(--blue); }
+.page-btn.active  { background: var(--blue); color: var(--white); border-color: var(--blue); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
+.page-size-select { font-size: 12px; border: 1.5px solid var(--gray-light); border-radius: var(--radius-xs); padding: 4px 8px; color: var(--navy); }
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 20px 32px;
+  font-size: 11px;
+  color: var(--gray);
+  border-top: 1px solid var(--gray-light);
+  margin-top: 8px;
+}
+
+/* ===== OVERLAY DE CARGA INICIAL ===== */
+#initOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--navy);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  transition: opacity .4s ease;
+}
+#initOverlay.fade-out { opacity: 0; pointer-events: none; }
+.init-spinner {
+  width: 52px; height: 52px;
+  border: 4px solid rgba(255,255,255,.15);
+  border-top-color: var(--sky);
+  border-radius: 50%;
+  animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.init-msg { color: var(--white); font-size: 14px; font-weight: 600; letter-spacing: .02em; }
+.init-sub { color: var(--sky-light); font-size: 12px; margin-top: -10px; }
+
+/* Animations */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.kpi-card, .chart-card, .gauge-section, .table-section, .filters-section { animation: fadeInUp .4s ease both; }
+.kpi-card:nth-child(1) { animation-delay: .05s; }
+.kpi-card:nth-child(2) { animation-delay: .10s; }
+.kpi-card:nth-child(3) { animation-delay: .15s; }
+.kpi-card:nth-child(4) { animation-delay: .20s; }
+
+/* Modal visor PDF */
+.pdf-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,35,66,.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.pdf-modal-overlay.active { display: flex; }
+.pdf-modal {
+  background: var(--white);
+  border-radius: var(--radius);
+  width: 90vw;
+  max-width: 960px;
+  height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.pdf-modal-header {
+  background: var(--navy);
+  color: var(--white);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pdf-modal-title { font-size: 14px; font-weight: 700; }
+.pdf-modal-actions { display: flex; gap: 10px; align-items: center; }
+.btn-pdf-dl {
+  background: var(--celeste);
+  color: var(--white);
+  border: none;
+  padding: 7px 14px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-pdf-dl:hover { background: var(--blue); }
+.btn-modal-close {
+  background: rgba(255,255,255,.15);
+  color: var(--white);
+  border: none;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+}
+.btn-modal-close:hover { background: rgba(255,255,255,.3); }
+.pdf-modal iframe { flex: 1; border: none; width: 100%; }
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .upload-row { grid-template-columns: 1fr; }
+  .upload-row.single-row { grid-template-columns: 1fr; }
+  div[style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 900px) {
+  .container { padding: 16px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid { grid-template-columns: 1fr; }
+  .gauge-section { flex-direction: column; }
+  .header-inner { padding: 12px 16px; }
+  .header-meta { display: none; }
+  div[style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== OVERLAY CARGA INICIAL ===== -->
+<div id="initOverlay">
+  <div class="init-spinner"></div>
+  <div class="init-msg" id="initMsg">Conectando con Supabase…</div>
+  <div class="init-sub" id="initSub">Dashboard OTM · Convenio UNOPS · EsSalud</div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-logo">🩺</div>
+    <div class="header-text">
+      <div class="header-title">Dashboard de Seguimiento de Mantenimiento y Control Documentario de OTM – Convenio UNOPS – Equipos Dräger – RPS</div>
+      <div class="header-subtitle">Seguimiento de documentación técnica y regularización de OTM correspondientes a periodos anteriores. La información presentada no constituye conformidad de ejecución en campo por parte de la Unidad de Mantenimiento de Equipos.</div>
+    </div>
+    <div class="header-meta">
+      <strong id="updateDate">Cargando...</strong>
+      Fecha de actualización
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ===== UPLOADS + PANEL DE ESTADO ===== -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
+
+    <!-- Zona 1: Excel -->
+    <div class="upload-section" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📊</div>
+      <div class="upload-text">
+        <h3>Cargar archivo Excel actualizado</h3>
+        <p id="uploadStatus">Datos precargados activos. Cargue un nuevo .xlsx para actualizar.</p>
+      </div>
+      <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Seleccionar Excel</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="loadExcelFile(event)">
+    </div>
+
+    <!-- Zona 2: PDFs de OTM -->
+    <div class="upload-section pdf-zone" onclick="document.getElementById('pdfFileInput').click()">
+      <div class="upload-icon">📁</div>
+      <div class="upload-text">
+        <h3>Cargar archivos PDF de OTM <span class="pdf-count-badge" id="pdfCountBadge">0 PDFs</span></h3>
+        <p id="pdfStatus">Seleccione múltiples PDFs con formato: CODIGO (1er mant).pdf / (2do mant).pdf / (3er mant).pdf</p>
+      </div>
+      <button class="btn-upload amber" onclick="event.stopPropagation(); document.getElementById('pdfFileInput').click()">Cargar PDFs</button>
+      <input type="file" id="pdfFileInput" accept=".pdf" multiple onchange="loadPDFFiles(event)">
+    </div>
+
+    <!-- Panel informativo de conexión -->
+    <div class="upload-section" style="border-color:var(--sky);background:linear-gradient(135deg,#EBF3FC,#F4F7FB);cursor:default;">
+      <div class="upload-icon">☁️</div>
+      <div class="upload-text">
+        <h3>Estado de sincronización</h3>
+        <p id="cloudStatus">Conectando con Supabase…</p>
+      </div>
+      <span id="cloudBadge" style="margin-left:auto;flex-shrink:0;background:var(--amber-bg);color:var(--amber);border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap;">● Cargando</span>
+    </div>
+
+  </div>
+
+  <!-- ===== KPIs ===== -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">Total de equipos</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-sub">Ventiladores Dräger EVITA V600</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Equipos operativos</div>
+      <div class="kpi-value" id="kpi-op">—</div>
+      <div class="kpi-sub" id="kpi-op-pct">—</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Equipos inoperativos</div>
+      <div class="kpi-value" id="kpi-inop">—</div>
+      <div class="kpi-sub" id="kpi-inop-pct">—</div>
+    </div>
+    <div class="kpi-card navy">
+      <div class="kpi-label">OTM ejecutadas esperadas</div>
+      <div class="kpi-value" id="kpi-otm-esp">66</div>
+      <div class="kpi-sub">2 OTM por equipo × 33 equipos · 3er MP pendiente</div>
+    </div>
+  </div>
+
+  <!-- ===== GAUGE: AVANCE DOCUMENTARIO ===== -->
+  <div class="gauge-section">
+    <div class="gauge-left">
+      <div class="gauge-title">📊 Avance de Regularización Documentaria — OTM 1 y OTM 2</div>
+      <div class="gauge-sub">PDFs de OTM 1 y OTM 2 confirmados / 66 esperados × 100 — El 3er mantenimiento está pendiente de ejecución y no se contabiliza</div>
+      <div class="gauge-bar-wrap">
+        <div class="gauge-bar-fill" id="gaugeFill" style="width:0%"></div>
+      </div>
+      <div class="gauge-labels">
+        <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+      </div>
+      <div class="gauge-detail">
+        <div class="gauge-detail-item">
+          <div class="val" id="gauge-otm-conf">0</div>
+          <div class="lbl">PDFs OTM 1 y 2</div>
+        </div>
+        <div class="gauge-detail-item">
+          <div class="val" id="gauge-otm-esp">66</div>
+          <div class="lbl">OTM ejecutadas esperadas</div>
+        </div>
+        <div class="gauge-detail-item">
+          <div class="val" id="gauge-pending">66</div>
+          <div class="lbl">OTM pendientes</div>
+        </div>
+      </div>
+    </div>
+    <div class="gauge-right">
+      <div class="gauge-pct" id="gaugePct">0%</div>
+      <div class="gauge-pct-label">de regularización<br>documentaria</div>
+    </div>
+  </div>
+
+  <!-- ===== CHARTS (2 gráficos) ===== -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">📊 Equipos por Centro</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chartCentro"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📊 Equipos por Servicio</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chartServicio"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FILTERS ===== -->
+  <div class="filters-section">
+    <span class="filters-label">🔎 Filtros</span>
+    <div class="filter-group">
+      <label>Centro</label>
+      <select id="filtCentro" onchange="applyFilters()">
+        <option value="">Todos los centros</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Servicio</label>
+      <select id="filtServicio" onchange="applyFilters()">
+        <option value="">Todos los servicios</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Código del equipo</label>
+      <select id="filtCodigo" onchange="applyFilters()">
+        <option value="">Todos los códigos</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Estado del equipo</label>
+      <select id="filtEstado" onchange="applyFilters()">
+        <option value="">Todos los estados</option>
+      </select>
+    </div>
+    <button class="btn-clear-filter" onclick="clearFilters()">✕ Limpiar filtros</button>
+  </div>
+
+  <!-- ===== TABLE ===== -->
+  <div class="table-section">
+    <div class="table-toolbar">
+      <div>
+        <div class="table-title">📋 Registro de Equipos y Estado Documentario OTM</div>
+        <div class="table-count" id="tableCount">0 registros</div>
+      </div>
+      <div class="table-actions">
+        <div class="search-wrap">
+          <input type="text" id="searchInput" placeholder="Buscar en tabla..." oninput="applyFilters()">
+        </div>
+        <button class="btn-export excel" onclick="exportExcel()"><span>📥</span> Exportar Excel</button>
+        <button class="btn-export pdf"   onclick="exportPDF()"><span>📄</span> Exportar PDF</button>
+      </div>
+    </div>
+
+    <div class="otm3-notice">
+      <div class="otm3-notice-icon">⚠️</div>
+      <div>
+        <strong>3er Mantenimiento — Pendiente de ejecución</strong>
+        Las OTM adjuntas correspondientes al 3er mantenimiento son plantillas/documentación preliminar. El mantenimiento aún no ha sido ejecutado y queda pendiente de regularización y firma. Los documentos están disponibles únicamente para descarga y referencia.
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('centro')"    id="th-centro">Centro <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('servicio')"  id="th-servicio">Servicio <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('codigo')"    id="th-codigo">Código <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('serie')"     id="th-serie">Serie <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('estado')"    id="th-estado">Estado del equipo <span class="sort-icon">↕</span></th>
+            <th>Garantía</th>
+            <th>Frecuencia</th>
+            <th onclick="sortTable('otm1')"      id="th-otm1">OTM 1 <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('otm2')"      id="th-otm2">OTM 2 <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('otm3')" id="th-otm3">OTM 3 <span style="background:#FEF5E7;color:#9A5800;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;margin-left:3px;vertical-align:middle;border:1px solid #E67E22;">PENDIENTE</span> <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('docStatus')" id="th-docStatus">Estado documentario <span class="sort-icon">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <div class="pagination-info" id="paginationInfo">Mostrando — de —</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:var(--gray-dark);">Registros por página: </label>
+          <select class="page-size-select" id="pageSize" onchange="changePageSize()">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="9999">Todos</option>
+          </select>
+        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="footer">
+  Dashboard de Seguimiento OTM · Convenio UNOPS – Equipos Dräger – Unidad de Mantenimiento de Equipos – RPS · Datos del archivo DATA_JR.xlsx
+</div>
+
+<!-- ===== MODAL VISOR PDF ===== -->
+<div class="pdf-modal-overlay" id="pdfModal" onclick="closePdfModal(event)">
+  <div class="pdf-modal">
+    <div class="pdf-modal-header">
+      <div class="pdf-modal-title" id="pdfModalTitle">Vista de OTM</div>
+      <div class="pdf-modal-actions">
+        <a class="btn-pdf-dl" id="pdfModalDl" href="#" download>⬇ Descargar PDF</a>
+        <button class="btn-modal-close" onclick="closePdfModal()">✕</button>
+      </div>
+    </div>
+    <iframe id="pdfModalFrame" src="" title="Visor PDF OTM"></iframe>
+  </div>
+</div>
+
+<!-- ===== CHART.JS ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<script>
+/* ================================================================
+   DASHBOARD OTM – CONVENIO UNOPS – EQUIPOS DRÄGER – RPS
+   v2.0 – Con OTM 3, detección automática de PDFs, 2 gráficos
+   ================================================================ */
+
+// ==== MAPA DE PDFs CARGADOS ====
+// Clave: "SERIE|1" / "SERIE|2" / "SERIE|3"  →  { url: URL pública, name: filename }
+const pdfStore = {};
+
+// ==== CONFIGURACIÓN DE SUPABASE ====
+const SUPABASE_URL  = 'https://dvijsgcqliryejqisfsu.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_iCdogrsNLz7NhgUgMsFuUA_n7gqaP97';
+const BUCKET_NAME   = 'OTMS';
+// El Excel se guarda en la RAÍZ del bucket (igual que los PDFs),
+// con un prefijo __ para evitar colisión con nombres de series de equipos.
+// Esto garantiza que las mismas políticas RLS que ya permiten subir PDFs
+// también cubren este archivo sin requerir configuración adicional.
+const EXCEL_FILENAME = '__excel_data_otm.xlsx';
+
+let supabase      = null;
+let supabaseReady = false;
+
+/* ---- helpers UI de estado ---- */
+function setCloudBadge(estado) {
+  const badge = document.getElementById('cloudBadge');
+  if (!badge) return;
+  const map = {
+    loading: { bg: 'var(--amber-bg)',  color: 'var(--amber)', label: '● Cargando'    },
+    ok:      { bg: 'var(--green-bg)',  color: 'var(--green)', label: '● En línea'    },
+    warn:    { bg: 'var(--amber-bg)',  color: 'var(--amber)', label: '● Advertencia' },
+    error:   { bg: 'var(--red-bg)',    color: 'var(--red)',   label: '● Sin conexión' },
+  };
+  const s = map[estado] || map.warn;
+  badge.style.background = s.bg;
+  badge.style.color      = s.color;
+  badge.textContent      = s.label;
+}
+
+function setInitMsg(msg, sub) {
+  const el = document.getElementById('initMsg');
+  const es = document.getElementById('initSub');
+  if (el) el.textContent = msg;
+  if (es && sub !== undefined) es.textContent = sub;
+}
+
+function hideOverlay() {
+  const ov = document.getElementById('initOverlay');
+  if (!ov) return;
+  ov.classList.add('fade-out');
+  setTimeout(() => { ov.style.display = 'none'; }, 450);
+}
+
+// ---- Inicializar Supabase ----
+function initSupabase() {
+  if (!SUPABASE_KEY) {
+    console.warn('[OTM] Supabase no configurado: SUPABASE_KEY vacía.');
+    supabaseReady = false;
+    setCloudBadge('error');
+    const cs = document.getElementById('cloudStatus');
+    if (cs) cs.textContent = 'Sin conexión a Supabase. Operando con datos embebidos.';
+    return;
+  }
+  try {
+    supabase      = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseReady = true;
+    console.log('[OTM] ✅ Supabase inicializado');
+  } catch (err) {
+    console.error('[OTM] ❌ Error inicializando Supabase:', err);
+    supabaseReady = false;
+    setCloudBadge('error');
+    const cs = document.getElementById('cloudStatus');
+    if (cs) cs.textContent = 'Sin conexión a Supabase. Operando con datos embebidos.';
+  }
+}
+
+// Función utilitaria para cambiar ANON_KEY desde consola del navegador
+function changeSupabaseKey() {
+  const newKey = prompt('Ingresa tu nueva Supabase ANON_KEY:');
+  if (newKey) {
+    localStorage.setItem('supabase_anon_key', newKey);
+    alert('ANON_KEY actualizada. Se recargará la página…');
+    window.location.reload();
+  }
+}
+
+// ==== ESTADO INICIAL DE OTM (EQUIPOS CON SOLO OTM 1 DISPONIBLE) ====
+const equiposConOTM1Disponible = new Set([
+  'ASPC-0418', 'ASPC-0416', 'ASPC-0415', 'ASPC-0331',
+  'ASPC-0304', 'ASPC-0297', 'ASPC-0174',
+  'ASPA-0366', 'ASPA-0365', 'ASPA-0362', 'ASPA-0360',
+  'ASPA-0319', 'ASPA-0310', 'ASPA-0309'
+]);
+
+// ==== RASTREO DE OTM DISPONIBLES ====
+const otmAvailable = {};
+
+function initializeOTMAvailable() {
+  equiposConOTM1Disponible.forEach(serie => {
+    otmAvailable[`${serie}|1`] = true;
+  });
+}
+
+/* ================================================================
+   MAPEAR FILAS DEL EXCEL AL FORMATO INTERNO
+   Función centralizada — usada tanto por loadExcelFile (local)
+   como por loadExcelFromSupabase (nube). Una sola fuente de verdad.
+   ================================================================ */
+function mapExcelRows(rows) {
+  return rows.map((r, i) => ({
+    num:      i + 1,
+    centro:   r['UNIDAD PRESTADORA'] || '',
+    servicio: r['SERVICIO'] || '',
+    codigo:   String(r['CÓDIGO PATRIMONIAL'] || ''),
+    nombre:   r['DENOMINACIÓN ESPECÍFICA'] || '',
+    marca:    r['MARCA'] || '',
+    modelo:   r['MODELO'] || '',
+    serie:    r['SERIE'] || '',
+    estado:   r['ESTADO'] || '',
+    cobertura:r['COBERTURA'] || '',
+    otm1_ref: r['PRIMER MP'] || '',
+    otm2_ref: r['SEGUNDO MP'] || '',
+  }));
+}
+
+/* ================================================================
+   GUARDAR EXCEL EN SUPABASE STORAGE
+   — Ruta: raíz del bucket (igual que los PDFs)
+   — upsert:true → siempre reemplaza la versión anterior
+   — Diagnóstico completo en consola
+   ================================================================ */
+async function saveExcelToSupabase(file) {
+  if (!supabaseReady || !supabase) {
+    console.warn('[OTM] saveExcelToSupabase: Supabase no disponible.');
+    return false;
+  }
+  console.log(`[OTM] Subiendo Excel a Supabase: bucket=${BUCKET_NAME} archivo=${EXCEL_FILENAME}`);
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(EXCEL_FILENAME, file, {
+        upsert: true,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+    if (error) {
+      console.error('[OTM] ❌ Error subiendo Excel:', JSON.stringify(error, null, 2));
+      return false;
+    }
+    console.log('[OTM] ✅ Excel guardado en Supabase:', data);
+    return true;
+  } catch (err) {
+    console.error('[OTM] ❌ Excepción subiendo Excel:', err);
+    return false;
+  }
+}
+
+/* ================================================================
+   CARGAR EXCEL DESDE SUPABASE STORAGE
+   — Descarga desde la raíz del bucket (mismas políticas que PDFs)
+   — Parsea con SheetJS
+   — Devuelve array mapeado, o null si no existe/error
+   ================================================================ */
+async function loadExcelFromSupabase() {
+  if (!supabaseReady || !supabase) {
+    console.warn('[OTM] loadExcelFromSupabase: Supabase no disponible.');
+    return null;
+  }
+  console.log(`[OTM] Descargando Excel de Supabase: bucket=${BUCKET_NAME} archivo=${EXCEL_FILENAME}`);
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .download(EXCEL_FILENAME);
+
+    if (error) {
+      // Clasificar el error para diagnóstico preciso
+      const msg  = (error.message || '').toLowerCase();
+      const code = error.statusCode || error.status || error.error || '';
+      const notFound = msg.includes('not found') || msg.includes('object not found')
+                    || msg.includes('does not exist') || String(code) === '404'
+                    || msg.includes('404');
+      if (notFound) {
+        console.log('[OTM] ℹ️ Excel no encontrado en Supabase (primera carga). Se usarán datos embebidos.');
+      } else {
+        // Error real (permisos, red, etc.) — mostrar detalle completo
+        console.error('[OTM] ❌ Error descargando Excel:', JSON.stringify(error, null, 2));
+        console.error('[OTM]    → Verifica que las políticas RLS del bucket permitan SELECT para anon.');
+        console.error(`[OTM]    → Bucket: ${BUCKET_NAME}  Archivo: ${EXCEL_FILENAME}`);
+      }
+      return null;
+    }
+
+    if (!data) {
+      console.error('[OTM] ❌ Download devolvió data=null sin error. Revisar configuración del bucket.');
+      return null;
+    }
+
+    // Parsear el Blob con SheetJS
+    const arrayBuffer = await data.arrayBuffer();
+    const wb    = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows  = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    const mapped = mapExcelRows(rows);
+    console.log(`[OTM] ✅ Excel cargado desde Supabase: ${mapped.length} registros`);
+    return mapped;
+
+  } catch (err) {
+    console.error('[OTM] ❌ Excepción cargando Excel desde Supabase:', err);
+    return null;
+  }
+}
+
+/* ================================================================
+   OBTENER FECHA DE ÚLTIMA MODIFICACIÓN DEL EXCEL EN SUPABASE
+   Lista la raíz del bucket y busca el archivo por nombre.
+   ================================================================ */
+async function getExcelLastModified() {
+  if (!supabaseReady || !supabase) return null;
+  try {
+    // Listar raíz del bucket (donde vive el Excel)
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .list('', { limit: 200 });
+    if (error || !data) return null;
+    const file = data.find(f => f.name === EXCEL_FILENAME);
+    return file ? (file.updated_at || file.created_at) : null;
+  } catch { return null; }
+}
+
+/* ================================================================
+   ACTUALIZAR BADGE DE NUBE CON INFO COMPLETA
+   ================================================================ */
+async function refreshCloudStatus(source) {
+  const cs = document.getElementById('cloudStatus');
+  if (!cs) return;
+
+  const lastMod  = await getExcelLastModified();
+  const pdfCount = Object.keys(pdfStore).length;
+
+  let excelInfo = '';
+  if (lastMod) {
+    const d = new Date(lastMod);
+    excelInfo = `Excel: ${d.toLocaleDateString('es-PE', {day:'2-digit', month:'short', year:'numeric'})}`;
+  } else if (source === 'supabase') {
+    excelInfo = 'Excel cargado desde la nube';
+  } else {
+    excelInfo = 'Excel: datos embebidos';
+  }
+
+  cs.textContent = `${excelInfo} · ${pdfCount} OTM en la nube · Sincronizado automáticamente`;
+  setCloudBadge(supabaseReady ? 'ok' : 'warn');
+}
+
+/* ================================================================
+   DATOS EMBEBIDOS (Fallback — se usan solo si no hay Excel en Supabase)
+   ================================================================ */
+const RAW_DATA = [{"num":1,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174652","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0185","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128016-2023","otm2_ref":"170131-2024"},{"num":2,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174651","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0194","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128038-2023","otm2_ref":"170123-2024"},{"num":3,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174649","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0186","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"086077-2023","otm2_ref":"170122-2024"},{"num":4,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174658","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0190","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128015-2023","otm2_ref":"170121-2024"},{"num":5,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174428","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0206","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128044-2023","otm2_ref":"205182-2023"},{"num":6,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000538","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0304","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"175558-2022","otm2_ref":"153208-2023"},{"num":7,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604516","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0320","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"224050-2022","otm2_ref":"126124-2023"},{"num":8,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"02604519","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0319","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147198-2022","otm2_ref":"045318-2023"},{"num":9,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604513","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0304","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199267-2022","otm2_ref":"205301-2023"},{"num":10,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. EMERGENCIA ADULTOS","codigo":"03000175","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0415","estado":"OPERATIVO BUENO","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"17902-2022","otm2_ref":"205306-2023"},{"num":11,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. CUIDADOS INTERMEDIOS ADULTOS","codigo":"02604512","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0305","estado":"INOPERATIVO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199265-2022","otm2_ref":"230576-2023"},{"num":12,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UCI PEDIÁTRICA","codigo":"02604509","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0308","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199273-2022","otm2_ref":"313058-2023"},{"num":13,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604508","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0309","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147211-2022","otm2_ref":"199270-2022"},{"num":14,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174427","nombre":"VENTILADOR VOLUMETRICO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0203","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"234638-2022","otm2_ref":"205312-2023"},{"num":15,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174102","nombre":"VENTILADOR VOLUMETRICO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0178","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"234637-2022","otm2_ref":"205313-2026"},{"num":16,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604504","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0310","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147212-2022","otm2_ref":"205300-2023"},{"num":17,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000172","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0418","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"197897-2022","otm2_ref":"205309-2023"},{"num":18,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000170","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0416","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"197896-2022","otm2_ref":"205307-2023"},{"num":19,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604533","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0360","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147214-2022","otm2_ref":"153930-2023"},{"num":20,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604536","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0362","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147213-2022","otm2_ref":"153932-2023"},{"num":21,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604535","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0365","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147217-2022","otm2_ref":"153934-2023"},{"num":22,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604534","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0366","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-03-13","otm2_ref":"153931-2023"},{"num":23,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174430","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0197","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"034144-2023","otm2_ref":"2024-12-30"},{"num":24,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. CUIDADOS INTENSIVOS GENERALES ADULTOS","codigo":"01174093","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0297","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"225152-2022","otm2_ref":"205305-2023"},{"num":25,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174099","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0174","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"225152-2022","otm2_ref":"205305-2023"},{"num":26,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"CENTRO QUIRÚRGICO Y ANESTESIOLOGÍA","codigo":"01174085","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0326","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"126121-2023","otm2_ref":"205130-2023"},{"num":27,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174094","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0337","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"126120-2023","otm2_ref":"205129-2023"},{"num":28,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174091","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0325","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2025-06-04","otm2_ref":"126119-2023"},{"num":29,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174087","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0331","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"175848-2022","otm2_ref":"126118-2023"},{"num":30,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174086","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0330","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-02-06","otm2_ref":"094818-2024"},{"num":31,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174090","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0294","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-08-23","otm2_ref":"205128-2023"},{"num":32,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174431","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0196","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-08-17","otm2_ref":"126114-2023"}];
+
+/* ================================================================
+   ESTADO GLOBAL
+   ================================================================ */
+let allData      = [];
+let filteredData = [];
+let currentPage  = 1;
+let pageSize     = 20;
+let sortKey      = '';
+let sortDir      = 1;
+let chartCentro, chartServicio;
+
+const OTM_ESPERADAS = 66; // 2 OTM ejecutadas por equipo × 33 equipos (3er MP pendiente de ejecución)
+
+/* ================================================================
+   INICIALIZACIÓN — Secuencia de arranque completa con overlay
+   1. Supabase
+   2. Excel desde Supabase  (→ fallback: RAW_DATA embebido)
+   3. OTM iniciales + render
+   4. PDFs desde Supabase + re-render
+   5. Ocultar overlay
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', async () => {
+
+  /* -- Fecha de cabecera -- */
+  const now = new Date();
+  document.getElementById('updateDate').textContent =
+    now.toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
+
+  /* -- 1. Supabase -- */
+  setInitMsg('Conectando con Supabase…');
+  initSupabase();
+
+  /* -- 2. Cargar Excel -- */
+  let dataSource  = 'embedded';
+  let initialData = RAW_DATA;
+
+  if (supabaseReady) {
+    setInitMsg('Descargando datos del Excel…', 'Recuperando la última versión desde la nube');
+    setCloudBadge('loading');
+
+    const supabaseData = await loadExcelFromSupabase();
+
+    if (supabaseData && supabaseData.length > 0) {
+      initialData = supabaseData;
+      dataSource  = 'supabase';
+      const upEl = document.getElementById('uploadStatus');
+      if (upEl) upEl.textContent = `☁️ ${supabaseData.length} registros cargados desde Supabase`;
+      // Ocultar zona de carga de Excel: el usuario no necesita hacer nada
+      const excelZone = document.querySelector('.upload-section');
+      if (excelZone) {
+        excelZone.style.borderColor = 'var(--green)';
+        excelZone.style.background  = 'var(--green-bg)';
+      }
+    } else {
+      // Sin Excel en Supabase → mostrar mensaje guía al administrador
+      const upEl = document.getElementById('uploadStatus');
+      if (upEl) upEl.textContent = '⬆️ Suba el archivo Excel para activar el dashboard. Solo se hace una vez.';
+    }
+  } else {
+    // Sin Supabase → datos embebidos como última instancia
+    const upEl = document.getElementById('uploadStatus');
+    if (upEl) upEl.textContent = '⚠️ Sin conexión a la nube. Usando datos embebidos.';
+  }
+
+  /* -- 3. OTM disponibles iniciales + datos -- */
+  setInitMsg('Procesando equipos…');
+  initializeOTMAvailable();
+  processData(initialData);
+  initCharts();
+  buildFilters();
+  applyFilters();
+  setTimeout(updateGauge, 300);
+
+  /* -- 4. PDFs desde Supabase -- */
+  if (supabaseReady) {
+    setInitMsg('Cargando OTM desde la nube…', 'Relacionando documentación con cada equipo');
+    await loadPDFsFromSupabase();
+    applyFilters();
+    updateGauge();
+  }
+
+  /* -- 5. Estado final y ocultar overlay -- */
+  await refreshCloudStatus(dataSource);
+  hideOverlay();
+});
+
+/* ================================================================
+   CARGA DE PDFs - AHORA CON SUPABASE STORAGE
+   Formato esperado: "SERIE (1er mant).pdf" | "(2do mant)" | "(3er mant)"
+   También tolera: "1ert mant", "2da otm", "3er otm"
+   ================================================================ */
+async function loadPDFFiles(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+
+  let loaded = 0;
+  let uploaded = 0;
+  let errors = 0;
+
+  // Mostrar estado de carga
+  document.getElementById('pdfStatus').textContent = '⏳ Subiendo PDFs a Supabase...';
+
+  for (const file of files) {
+    const name = file.name; // e.g. "ASPA-0304 (1er mant).pdf"
+
+    // Extraer serie
+    const serieMatch = name.match(/^([A-Z]{4}-\d{4})/i);
+    if (!serieMatch) continue;
+
+    const serie = serieMatch[1].toUpperCase();
+
+    // Detectar qué OTM es
+    let otmNum = null;
+    if (/\(1e[rt]/i.test(name))  otmNum = '1';
+    else if (/\(2d[oa]/i.test(name)) otmNum = '2';
+    else if (/\(3e[rt]/i.test(name)) otmNum = '3';
+
+    if (!otmNum) continue;
+
+    const key = `${serie}|${otmNum}`;
+
+    // Si Supabase está disponible, subir a la nube
+    if (supabaseReady && supabase) {
+      try {
+        // Subir archivo a Supabase Storage
+        const { data, error: uploadError } = await supabase.storage
+          .from(BUCKET_NAME)
+          .upload(name, file, { upsert: false });
+
+        if (uploadError) {
+  console.error("ERROR COMPLETO:", uploadError);
+  console.error("Mensaje:", uploadError.message);
+  console.error("Status:", uploadError.statusCode);
+  console.error("Error:", uploadError.error);
+  console.error("Detalles:", JSON.stringify(uploadError, null, 2));
+  errors++;
+  continue;
+}
+
+        // Obtener URL pública del archivo
+        const { data: publicUrlData } = supabase.storage
+          .from(BUCKET_NAME)
+          .getPublicUrl(name);
+
+        if (publicUrlData && publicUrlData.publicUrl) {
+          pdfStore[key] = {
+            url: publicUrlData.publicUrl,
+            name: file.name,
+            storagePath: name,
+            supabase: true
+          };
+          otmAvailable[key] = true;
+          uploaded++;
+        }
+      } catch (err) {
+        console.error(`Error procesando ${name}:`, err);
+        errors++;
+      }
+    } else {
+      // Fallback: usar Object URL si Supabase no está disponible
+      const url = URL.createObjectURL(file);
+      pdfStore[key] = {
+        url: url,
+        name: file.name,
+        supabase: false
+      };
+      otmAvailable[key] = true;
+    }
+
+    loaded++;
+  }
+
+  // Actualizar UI
+  const totalPdfsLoaded = Object.keys(pdfStore).length;
+  document.getElementById('pdfCountBadge').textContent = `${totalPdfsLoaded} PDF${totalPdfsLoaded !== 1 ? 's' : ''}`;
+
+  let statusText = `✅ ${loaded} archivo${loaded !== 1 ? 's' : ''} procesado${loaded !== 1 ? 's' : ''}. `;
+  if (supabaseReady) {
+    statusText += `☁️ ${uploaded} subido${uploaded !== 1 ? 's' : ''} a Supabase. Total en la nube: ${totalPdfsLoaded} archivos.`;
+  } else {
+    statusText += `📱 ${loaded} en memoria local.`;
+  }
+  if (errors > 0) {
+    statusText += ` ⚠️ ${errors} error${errors !== 1 ? 'es' : ''}.`;
+  }
+  document.getElementById('pdfStatus').textContent = statusText;
+
+  // Actualizar fecha
+  const now = new Date();
+  document.getElementById('updateDate').textContent =
+    now.toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
+
+  updateGauge();
+  renderTable();
+}
+
+/* ================================================================
+   CARGAR PDFs DESDE SUPABASE STORAGE
+   Se ejecuta al inicializar el dashboard
+   ================================================================ */
+async function loadPDFsFromSupabase() {
+  if (!supabaseReady || !supabase) {
+    console.log('Supabase no disponible, continuando con PDF local...');
+    return;
+  }
+
+  try {
+    // Listar todos los archivos en el bucket
+    const { data: files, error: listError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .list('', { limit: 1000 });
+
+    if (listError) {
+      console.error('Error listando PDFs de Supabase:', listError);
+      return;
+    }
+
+    if (!files || files.length === 0) {
+      console.log('No hay PDFs guardados en Supabase');
+      return;
+    }
+
+    // Procesar cada archivo
+    files.forEach(file => {
+      const name = file.name;
+
+      // Extraer serie
+      const serieMatch = name.match(/^([A-Z]{4}-\d{4})/i);
+      if (!serieMatch) return;
+
+      const serie = serieMatch[1].toUpperCase();
+
+      // Detectar OTM
+      let otmNum = null;
+      if (/\(1e[rt]/i.test(name))  otmNum = '1';
+      else if (/\(2d[oa]/i.test(name)) otmNum = '2';
+      else if (/\(3e[rt]/i.test(name)) otmNum = '3';
+
+      if (!otmNum) return;
+
+      const key = `${serie}|${otmNum}`;
+
+      // Obtener URL pública
+      const { data: publicUrlData } = supabase.storage
+        .from(BUCKET_NAME)
+        .getPublicUrl(name);
+
+      if (publicUrlData && publicUrlData.publicUrl) {
+        pdfStore[key] = {
+          url: publicUrlData.publicUrl,
+          name: name,
+          storagePath: name,
+          supabase: true
+        };
+        otmAvailable[key] = true;
+      }
+    });
+
+    const totalLoaded = Object.keys(pdfStore).length;
+    console.log(`✅ ${totalLoaded} PDF${totalLoaded !== 1 ? 's' : ''} cargado${totalLoaded !== 1 ? 's' : ''} desde Supabase`);
+    
+    // Actualizar UI con los PDFs cargados
+    if (totalLoaded > 0) {
+      document.getElementById('pdfCountBadge').textContent = `${totalLoaded} PDF${totalLoaded !== 1 ? 's' : ''}`;
+      document.getElementById('pdfStatus').textContent = `☁️ ${totalLoaded} PDF${totalLoaded !== 1 ? 's' : ''} cargado${totalLoaded !== 1 ? 's' : ''} desde Supabase automáticamente.`;
+    }
+
+  } catch (err) {
+    console.error('Error cargando PDFs de Supabase:', err);
+  }
+}
+
+/* ================================================================
+   PROCESAR DATOS
+   ================================================================ */
+function processData(raw) {
+  allData = raw.map(r => {
+    const estadoUp = (r.estado || '').toUpperCase();
+    const esMalo   = estadoUp.includes('MALO');
+    const esInop   = estadoUp.includes('INOPERATIVO') || esMalo;
+
+    return {
+      ...r,
+      garantia:    '36 meses',   // fijo según especificación
+      frecuencia:  '1 vez por año', // fijo según especificación
+      esOperativo: !esInop,
+      esInop,
+      // OTM se resuelven dinámicamente en render según pdfStore
+    };
+  });
+}
+
+/* ================================================================
+   RESOLVER ESTADO OTM (se llama en render, no en processData)
+
+   OTM 1 y OTM 2:
+     'Disponible' → hay PDF cargado o marcado como disponible inicialmente
+     'Pendiente'  → sin PDF
+
+   OTM 3 (3er mantenimiento — pendiente de ejecución):
+     Siempre devuelve 'Pendiente de ejecución', independientemente de si
+     hay un PDF cargado (que sería solo una plantilla preliminar).
+     El PDF SÍ se muestra para descarga; solo el ESTADO cambia.
+   ================================================================ */
+function getOtmStatus(serie, num) {
+  if (num === '3') return 'Pendiente de ejecución';
+  const key = `${serie}|${num}`;
+  return pdfStore[key] || otmAvailable[key] ? 'Disponible' : 'Pendiente';
+}
+
+function getDocStatus(serie) {
+  // Solo OTM 1 y OTM 2 determinan el estado documentario ejecutado
+  const o1 = getOtmStatus(serie, '1');
+  const o2 = getOtmStatus(serie, '2');
+  const disp = [o1, o2].filter(s => s === 'Disponible').length;
+  if (disp === 0) return 'Pendiente';
+  if (disp === 2) return 'Completo';
+  return 'Regularización Parcial';
+}
+
+/* ================================================================
+   FILTROS
+   ================================================================ */
+function buildFilters() {
+  const centros   = [...new Set(allData.map(d => d.centro))].sort();
+  const servicios = [...new Set(allData.map(d => d.servicio))].sort();
+  const codigos   = [...new Set(allData.map(d => d.serie))].sort();
+  const estados   = [...new Set(allData.map(d => d.estado))].sort();
+  populateSelect('filtCentro',   centros);
+  populateSelect('filtServicio', servicios);
+  populateSelect('filtCodigo',   codigos);
+  populateSelect('filtEstado',   estados);
+}
+
+function populateSelect(id, values) {
+  const sel = document.getElementById(id);
+  values.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  });
+}
+
+function clearFilters() {
+  ['filtCentro','filtServicio','filtCodigo','filtEstado'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('searchInput').value = '';
+  applyFilters();
+}
+
+function applyFilters() {
+  const centro   = document.getElementById('filtCentro').value;
+  const servicio = document.getElementById('filtServicio').value;
+  const codigo   = document.getElementById('filtCodigo').value;
+  const estado   = document.getElementById('filtEstado').value;
+  const search   = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  filteredData = allData.filter(d => {
+    if (centro   && d.centro   !== centro)   return false;
+    if (servicio && d.servicio !== servicio) return false;
+    if (codigo   && d.serie    !== codigo)   return false;
+    if (estado   && d.estado   !== estado)   return false;
+    if (search) {
+      const hay = Object.values(d).join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  currentPage = 1;
+  applySortToFiltered();
+  updateKPIs();
+  updateCharts();
+  updateGauge();
+  renderTable();
+}
+
+/* ================================================================
+   ORDENAMIENTO
+   ================================================================ */
+function sortTable(key) {
+  if (sortKey === key) sortDir = -sortDir;
+  else { sortKey = key; sortDir = 1; }
+  document.querySelectorAll('thead th').forEach(th => th.classList.remove('sorted'));
+  const thEl = document.getElementById('th-' + key);
+  if (thEl) { thEl.classList.add('sorted'); thEl.querySelector('.sort-icon').textContent = sortDir === 1 ? '↑' : '↓'; }
+  applySortToFiltered();
+  renderTable();
+}
+
+function applySortToFiltered() {
+  if (!sortKey) return;
+  // Para OTM cols, sort por estado resuelto en tiempo real
+  filteredData.sort((a, b) => {
+    let va, vb;
+    if (sortKey === 'otm1') { va = getOtmStatus(a.serie,'1'); vb = getOtmStatus(b.serie,'1'); }
+    else if (sortKey === 'otm2') { va = getOtmStatus(a.serie,'2'); vb = getOtmStatus(b.serie,'2'); }
+    else if (sortKey === 'otm3') { va = getOtmStatus(a.serie,'3'); vb = getOtmStatus(b.serie,'3'); }
+    else if (sortKey === 'docStatus') { va = getDocStatus(a.serie); vb = getDocStatus(b.serie); }
+    else { va = (a[sortKey] ?? '').toString().toLowerCase(); vb = (b[sortKey] ?? '').toString().toLowerCase(); }
+    return va < vb ? -sortDir : va > vb ? sortDir : 0;
+  });
+}
+
+/* ================================================================
+   KPIs
+   ================================================================ */
+function updateKPIs() {
+  const data  = filteredData;
+  const total = data.length;
+  const op    = data.filter(d => d.esOperativo).length;
+  const inop  = data.filter(d => d.esInop).length;
+  document.getElementById('kpi-total').textContent    = total;
+  document.getElementById('kpi-op').textContent       = op;
+  document.getElementById('kpi-inop').textContent     = inop;
+  document.getElementById('kpi-op-pct').textContent   = total ? `${((op/total)*100).toFixed(1)}% del total` : '—';
+  document.getElementById('kpi-inop-pct').textContent = total ? `${((inop/total)*100).toFixed(1)}% del total` : '—';
+}
+
+/* ================================================================
+   GAUGE
+   ================================================================ */
+function countAvailableOTM() {
+  // Contar todas las OTM disponibles (cargadas o iniciales)
+  const allKeys = new Set([...Object.keys(pdfStore), ...Object.keys(otmAvailable)]);
+  return allKeys.size;
+}
+
+function updateGauge() {
+  const totalPdfs = countAvailableOTM();
+  const pct = Math.min(100, (totalPdfs / OTM_ESPERADAS * 100)).toFixed(1);
+  const pending = Math.max(0, OTM_ESPERADAS - totalPdfs);
+
+  document.getElementById('gaugePct').textContent        = pct + '%';
+  document.getElementById('gaugeFill').style.width       = pct + '%';
+  document.getElementById('gauge-otm-conf').textContent  = totalPdfs;
+  document.getElementById('gauge-otm-esp').textContent   = OTM_ESPERADAS;
+  document.getElementById('gauge-pending').textContent   = pending;
+}
+
+/* ================================================================
+   TABLA
+   ================================================================ */
+function renderTable() {
+  const start = (currentPage - 1) * pageSize;
+  const end   = pageSize === 9999 ? filteredData.length : start + pageSize;
+  const page  = filteredData.slice(start, end);
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  if (page.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--gray);">Sin resultados para los filtros seleccionados.</td></tr>`;
+  } else {
+    page.forEach(d => {
+      const s   = d.serie;
+      const ds  = getDocStatus(s);
+      const tr  = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${d.centro}</td>
+        <td>${d.servicio}</td>
+        <td><strong>${d.codigo}</strong></td>
+        <td><strong style="color:var(--blue)">${s}</strong></td>
+        <td>${estadoBadge(d.estado)}</td>
+        <td style="text-align:center;white-space:nowrap">${d.garantia}</td>
+        <td style="text-align:center;white-space:nowrap">${d.frecuencia}</td>
+        <td>${otmCell(s, '1')}</td>
+        <td>${otmCell(s, '2')}</td>
+        <td>${otmCell(s, '3')}</td>
+        <td>${docBadge(ds)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  const total = filteredData.length;
+  document.getElementById('tableCount').textContent =
+    `${total} registro${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`;
+  document.getElementById('paginationInfo').textContent =
+    `Mostrando ${Math.min(start + 1, total)} – ${Math.min(end, total)} de ${total}`;
+  renderPagination(total);
+}
+
+/* Celda OTM con botón Ver PDF o badge Pendiente/Disponible */
+function otmCell(serie, num) {
+  const key = `${serie}|${num}`;
+  if (pdfStore[key]) {
+    // Hay un PDF cargado
+    const { name } = pdfStore[key];
+    return `<button class="btn-ver-pdf" onclick="openPdfModal('${key}','${name.replace(/'/g,"\\'")}')">📄 Ver PDF</button>`;
+  }
+  // Verificar si está disponible inicialmente
+  if (otmAvailable[key]) {
+    return `<span class="badge badge-completo">✅ Disponible</span>`;
+  }
+  // Si no está disponible
+  return `<span class="badge badge-pendiente">⏳ Pendiente</span>`;
+}
+
+function estadoBadge(estado) {
+  const e = (estado || '').toUpperCase();
+  if (e.includes('INOPERATIVO')) return `<span class="badge badge-inop">⛔ ${estado}</span>`;
+  if (e.includes('MALO'))        return `<span class="badge badge-op-malo">⚠️ ${estado}</span>`;
+  if (e.includes('REGULAR'))     return `<span class="badge badge-op-regular">🟡 ${estado}</span>`;
+  if (e.includes('BUENO'))       return `<span class="badge badge-op-bueno">✅ ${estado}</span>`;
+  return `<span class="badge">${estado}</span>`;
+}
+
+function docBadge(val) {
+  if (val === 'Completo')              return `<span class="badge badge-completo">✅ Completo</span>`;
+  if (val === 'Regularización Parcial') return `<span class="badge badge-parcial">📋 Reg. Parcial</span>`;
+  return `<span class="badge badge-pendiente">⏳ Pendiente</span>`;
+}
+
+/* ================================================================
+   MODAL VISOR PDF
+   ================================================================ */
+function openPdfModal(key, filename) {
+  const entry = pdfStore[key];
+  if (!entry) return;
+  document.getElementById('pdfModalTitle').textContent = filename;
+  document.getElementById('pdfModalFrame').src         = entry.url;
+  document.getElementById('pdfModalDl').href           = entry.url;
+  document.getElementById('pdfModalDl').download       = filename;
+  document.getElementById('pdfModal').classList.add('active');
+}
+
+function closePdfModal(e) {
+  if (e && e.target !== document.getElementById('pdfModal')) return;
+  document.getElementById('pdfModal').classList.remove('active');
+  document.getElementById('pdfModalFrame').src = '';
+}
+
+/* ================================================================
+   PAGINACIÓN
+   ================================================================ */
+function renderPagination(total) {
+  const totalPages = pageSize === 9999 ? 1 : Math.ceil(total / pageSize);
+  const ctrl = document.getElementById('paginationControls');
+  ctrl.innerHTML = '';
+  const mkBtn = (label, pg, disabled, active) => {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (active ? ' active' : '');
+    btn.textContent = label;
+    btn.disabled = disabled;
+    if (!disabled && !active) btn.onclick = () => { currentPage = pg; renderTable(); };
+    ctrl.appendChild(btn);
+  };
+  mkBtn('«', 1, currentPage === 1, false);
+  mkBtn('‹', currentPage - 1, currentPage === 1, false);
+  const sp = Math.max(1, currentPage - 2), ep = Math.min(totalPages, currentPage + 2);
+  for (let p = sp; p <= ep; p++) mkBtn(p, p, false, p === currentPage);
+  mkBtn('›', currentPage + 1, currentPage === totalPages, false);
+  mkBtn('»', totalPages, currentPage === totalPages, false);
+}
+
+function changePageSize() {
+  pageSize = parseInt(document.getElementById('pageSize').value);
+  currentPage = 1;
+  renderTable();
+}
+
+/* ================================================================
+   GRÁFICOS (solo 2: por centro y por servicio)
+   ================================================================ */
+function initCharts() {
+  const ctxCentro = document.getElementById('chartCentro').getContext('2d');
+  chartCentro = new Chart(ctxCentro, {
+    type: 'bar',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#1B5EA8','#2E86C1','#5DADE2'], borderRadius: 6 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x} equipo${ctx.parsed.x !== 1 ? 's' : ''}` } }
+      },
+      scales: {
+        x: { beginAtZero: true, grid: { color: '#E8EEF6' }, ticks: { font: { size: 11 }, stepSize: 1 } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  const ctxServ = document.getElementById('chartServicio').getContext('2d');
+  chartServicio = new Chart(ctxServ, {
+    type: 'bar',
+    data: { labels: [], datasets: [{ data: [],
+      backgroundColor: ['#1B5EA8','#2479C7','#2E86C1','#3A95D5','#47A3E0','#5DADE2','#6DBDE8','#82CAED'],
+      borderRadius: 6 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x} equipo${ctx.parsed.x !== 1 ? 's' : ''}` } }
+      },
+      scales: {
+        x: { beginAtZero: true, grid: { color: '#E8EEF6' }, ticks: { font: { size: 10 }, stepSize: 1 } },
+        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+
+  updateCharts();
+}
+
+function updateCharts() {
+  const data = filteredData;
+
+  // Por centro
+  const centroCount = {};
+  data.forEach(d => { centroCount[d.centro] = (centroCount[d.centro] || 0) + 1; });
+  const cEntries = Object.entries(centroCount).sort((a,b) => b[1]-a[1]);
+  chartCentro.data.labels = cEntries.map(([k]) => k.length > 30 ? k.substring(0,30)+'…' : k);
+  chartCentro.data.datasets[0].data = cEntries.map(([,v]) => v);
+  chartCentro.update('none');
+
+  // Por servicio
+  const servCount = {};
+  data.forEach(d => { servCount[d.servicio] = (servCount[d.servicio] || 0) + 1; });
+  const sEntries = Object.entries(servCount).sort((a,b) => b[1]-a[1]);
+  chartServicio.data.labels = sEntries.map(([k]) => k.length > 32 ? k.substring(0,32)+'…' : k);
+  chartServicio.data.datasets[0].data = sEntries.map(([,v]) => v);
+  chartServicio.update('none');
+}
+
+/* ================================================================
+   CARGA DE EXCEL (manual, solo el administrador)
+   Procesa localmente + guarda en Supabase (raíz del bucket).
+   ================================================================ */
+function loadExcelFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const upEl = document.getElementById('uploadStatus');
+  if (upEl) upEl.textContent = '⏳ Procesando Excel…';
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const wb    = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows  = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const mapped = mapExcelRows(rows);  // función centralizada
+
+      // 1. Procesar y renderizar en el dashboard
+      processData(mapped);
+      ['filtCentro','filtServicio','filtCodigo','filtEstado'].forEach(id => {
+        const sel = document.getElementById(id);
+        while (sel.options.length > 1) sel.remove(1);
+      });
+      buildFilters();
+      applyFilters();
+      const now = new Date();
+      document.getElementById('updateDate').textContent =
+        now.toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
+
+      if (upEl) upEl.textContent = `⏳ ${file.name} (${mapped.length} registros) — Subiendo a Supabase…`;
+
+      // 2. Guardar en Supabase (reemplaza versión anterior, raíz del bucket)
+      if (supabaseReady) {
+        const ok = await saveExcelToSupabase(file);
+        if (ok) {
+          if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros guardados en Supabase`;
+          // Estilo confirmatorio en la zona de carga
+          const excelZone = document.querySelector('.upload-section');
+          if (excelZone) {
+            excelZone.style.borderColor = 'var(--green)';
+            excelZone.style.background  = 'var(--green-bg)';
+          }
+          await refreshCloudStatus('supabase');
+        } else {
+          if (upEl) upEl.textContent =
+            `⚠️ ${file.name} procesado localmente, pero no se pudo guardar en la nube. Revisa la consola.`;
+          setCloudBadge('warn');
+          const cs = document.getElementById('cloudStatus');
+          if (cs) cs.textContent = 'Error subiendo Excel. Ver consola del navegador (F12) para diagnóstico.';
+        }
+      } else {
+        if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros (sin conexión a la nube)`;
+      }
+
+    } catch(err) {
+      if (upEl) upEl.textContent = '❌ Error al leer el archivo Excel. Verifica el formato.';
+      console.error('[OTM] Error procesando Excel:', err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ================================================================
+   EXPORTAR EXCEL
+   ================================================================ */
+function exportExcel() {
+  const rows = filteredData.map(d => {
+    const s = d.serie;
+    return {
+      'Centro':              d.centro,
+      'Servicio':            d.servicio,
+      'Código':              d.codigo,
+      'Serie':               s,
+      'Estado del equipo':   d.estado,
+      'Garantía':            d.garantia,
+      'Frecuencia':          d.frecuencia,
+      'OTM 1':               getOtmStatus(s,'1'),
+      'OTM 2':               getOtmStatus(s,'2'),
+      'OTM 3':               getOtmStatus(s,'3'),
+      'Estado documentario': getDocStatus(s),
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'OTM Seguimiento');
+  const cols = Object.keys(rows[0] || {}).map(k => ({ wch: Math.max(k.length, 16) }));
+  ws['!cols'] = cols;
+  XLSX.writeFile(wb, `Seguimiento_OTM_UNOPS_Drager_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ================================================================
+   EXPORTAR PDF
+   ================================================================ */
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  doc.setFillColor(10, 35, 66);
+  doc.rect(0, 0, 297, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Dashboard OTM – Convenio UNOPS – Equipos Dräger – RPS', 10, 8);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Seguimiento de documentación técnica y regularización de OTM', 10, 14);
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-PE')}`, 245, 14);
+
+  const headers = [['Centro','Servicio','Código','Serie','Estado','Garantía','Frec.','OTM 1','OTM 2','OTM 3','Estado doc.']];
+  const body = filteredData.map(d => {
+    const s = d.serie;
+    return [
+      d.centro.substring(0,22),
+      d.servicio.substring(0,20),
+      d.codigo,
+      s,
+      d.estado.substring(0,18),
+      d.garantia,
+      d.frecuencia,
+      getOtmStatus(s,'1'),
+      getOtmStatus(s,'2'),
+      getOtmStatus(s,'3'),
+      getDocStatus(s),
+    ];
+  });
+
+  doc.autoTable({
+    head: headers,
+    body: body,
+    startY: 24,
+    styles: { fontSize: 6.5, cellPadding: 1.8 },
+    headStyles: { fillColor: [19, 59, 107], textColor: 255, fontStyle: 'bold', fontSize: 6.5 },
+    alternateRowStyles: { fillColor: [244, 247, 251] },
+    columnStyles: {
+      0:{ cellWidth: 35 }, 1:{ cellWidth: 32 }, 2:{ cellWidth: 18 },
+      3:{ cellWidth: 20 }, 4:{ cellWidth: 28 }, 5:{ cellWidth: 17 },
+      6:{ cellWidth: 20 }, 7:{ cellWidth: 20 }, 8:{ cellWidth: 20 },
+      9:{ cellWidth: 20 }, 10:{ cellWidth: 27 }
+    },
+    margin: { left: 8, right: 8 }
+  });
+
+  doc.save(`Seguimiento_OTM_UNOPS_Drager_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+</script>
+</body>
+</html>
