@@ -973,7 +973,7 @@ async function loadPDFFiles(event) {
         // Subir archivo a Supabase Storage
         const { data, error: uploadError } = await supabase.storage
           .from(BUCKET_NAME)
-          .upload(name, file, { upsert: true });
+          .upload(name, file, { upsert: false });
 
         if (uploadError) {
   console.error("ERROR COMPLETO:", uploadError);
