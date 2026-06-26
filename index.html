@@ -423,7 +423,27 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
 .badge-parcial    { background: #FEF5E7; color: #9A5800; }
 .badge-completo   { background: #E6F9F0; color: #0E7A45; }
 
-/* Botones Ver/Descargar PDF en tabla */
+.badge-otm3-pendiente {
+  background: #FEF5E7;
+  color: #9A5800;
+  border: 1.5px solid #E67E22;
+}
+/* Banner de aviso 3er mantenimiento */
+.otm3-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #FEF5E7;
+  border: 1.5px solid var(--amber);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 0 0 0 0;
+  font-size: 12px;
+  color: #7A4500;
+  line-height: 1.5;
+}
+.otm3-notice-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.otm3-notice strong { color: var(--amber); display: block; margin-bottom: 2px; font-size: 12px; }
 .btn-ver-pdf {
   display: inline-flex;
   align-items: center;
@@ -482,6 +502,31 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
   border-top: 1px solid var(--gray-light);
   margin-top: 8px;
 }
+
+/* ===== OVERLAY DE CARGA INICIAL ===== */
+#initOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--navy);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  transition: opacity .4s ease;
+}
+#initOverlay.fade-out { opacity: 0; pointer-events: none; }
+.init-spinner {
+  width: 52px; height: 52px;
+  border: 4px solid rgba(255,255,255,.15);
+  border-top-color: var(--sky);
+  border-radius: 50%;
+  animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.init-msg { color: var(--white); font-size: 14px; font-weight: 600; letter-spacing: .02em; }
+.init-sub { color: var(--sky-light); font-size: 12px; margin-top: -10px; }
 
 /* Animations */
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -575,6 +620,13 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
 </head>
 <body>
 
+<!-- ===== OVERLAY CARGA INICIAL ===== -->
+<div id="initOverlay">
+  <div class="init-spinner"></div>
+  <div class="init-msg" id="initMsg">Conectando con Supabase…</div>
+  <div class="init-sub" id="initSub">Dashboard OTM · Convenio UNOPS · EsSalud</div>
+</div>
+
 <!-- ===== HEADER ===== -->
 <header class="header">
   <div class="header-inner">
@@ -647,17 +699,17 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
       <div class="kpi-sub" id="kpi-inop-pct">—</div>
     </div>
     <div class="kpi-card navy">
-      <div class="kpi-label">Total OTM esperadas</div>
-      <div class="kpi-value" id="kpi-otm-esp">99</div>
-      <div class="kpi-sub">3 OTM por equipo × 33 equipos</div>
+      <div class="kpi-label">OTM ejecutadas esperadas</div>
+      <div class="kpi-value" id="kpi-otm-esp">66</div>
+      <div class="kpi-sub">2 OTM por equipo × 33 equipos · 3er MP pendiente</div>
     </div>
   </div>
 
   <!-- ===== GAUGE: AVANCE DOCUMENTARIO ===== -->
   <div class="gauge-section">
     <div class="gauge-left">
-      <div class="gauge-title">📊 Avance de Regularización Documentaria</div>
-      <div class="gauge-sub">PDFs cargados / OTM esperadas × 100 — Se actualiza automáticamente al cargar archivos PDF</div>
+      <div class="gauge-title">📊 Avance de Regularización Documentaria — OTM 1 y OTM 2</div>
+      <div class="gauge-sub">PDFs de OTM 1 y OTM 2 confirmados / 66 esperados × 100 — El 3er mantenimiento está pendiente de ejecución y no se contabiliza</div>
       <div class="gauge-bar-wrap">
         <div class="gauge-bar-fill" id="gaugeFill" style="width:0%"></div>
       </div>
@@ -667,14 +719,14 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
       <div class="gauge-detail">
         <div class="gauge-detail-item">
           <div class="val" id="gauge-otm-conf">0</div>
-          <div class="lbl">PDFs disponibles</div>
+          <div class="lbl">PDFs OTM 1 y 2</div>
         </div>
         <div class="gauge-detail-item">
-          <div class="val" id="gauge-otm-esp">99</div>
-          <div class="lbl">OTM esperadas</div>
+          <div class="val" id="gauge-otm-esp">66</div>
+          <div class="lbl">OTM ejecutadas esperadas</div>
         </div>
         <div class="gauge-detail-item">
-          <div class="val" id="gauge-pending">99</div>
+          <div class="val" id="gauge-pending">66</div>
           <div class="lbl">OTM pendientes</div>
         </div>
       </div>
@@ -747,6 +799,14 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
       </div>
     </div>
 
+    <div class="otm3-notice">
+      <div class="otm3-notice-icon">⚠️</div>
+      <div>
+        <strong>3er Mantenimiento — Pendiente de ejecución</strong>
+        Las OTM adjuntas correspondientes al 3er mantenimiento son plantillas/documentación preliminar. El mantenimiento aún no ha sido ejecutado y queda pendiente de regularización y firma. Los documentos están disponibles únicamente para descarga y referencia.
+      </div>
+    </div>
+
     <div class="table-wrap">
       <table>
         <thead>
@@ -760,7 +820,7 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
             <th>Frecuencia</th>
             <th onclick="sortTable('otm1')"      id="th-otm1">OTM 1 <span class="sort-icon">↕</span></th>
             <th onclick="sortTable('otm2')"      id="th-otm2">OTM 2 <span class="sort-icon">↕</span></th>
-            <th onclick="sortTable('otm3')"      id="th-otm3">OTM 3 <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('otm3')" id="th-otm3">OTM 3 <span style="background:#FEF5E7;color:#9A5800;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;margin-left:3px;vertical-align:middle;border:1px solid #E67E22;">PENDIENTE</span> <span class="sort-icon">↕</span></th>
             <th onclick="sortTable('docStatus')" id="th-docStatus">Estado documentario <span class="sort-icon">↕</span></th>
           </tr>
         </thead>
@@ -822,16 +882,18 @@ const pdfStore = {};
 const SUPABASE_URL  = 'https://dvijsgcqliryejqisfsu.supabase.co';
 const SUPABASE_KEY  = 'sb_publishable_iCdogrsNLz7NhgUgMsFuUA_n7gqaP97';
 const BUCKET_NAME   = 'OTMS';
-const EXCEL_PATH    = 'excel/data_otm.xlsx';   // Ruta fija dentro del bucket OTMS
+// El Excel se guarda en la RAÍZ del bucket (igual que los PDFs),
+// con un prefijo __ para evitar colisión con nombres de series de equipos.
+// Esto garantiza que las mismas políticas RLS que ya permiten subir PDFs
+// también cubren este archivo sin requerir configuración adicional.
+const EXCEL_FILENAME = '__excel_data_otm.xlsx';
 
 let supabase      = null;
 let supabaseReady = false;
 
 /* ---- helpers UI de estado ---- */
 function setCloudBadge(estado) {
-  // estado: 'loading' | 'ok' | 'warn' | 'error'
   const badge = document.getElementById('cloudBadge');
-  const txt   = document.getElementById('cloudStatus');
   if (!badge) return;
   const map = {
     loading: { bg: 'var(--amber-bg)',  color: 'var(--amber)', label: '● Cargando'    },
@@ -845,10 +907,24 @@ function setCloudBadge(estado) {
   badge.textContent      = s.label;
 }
 
+function setInitMsg(msg, sub) {
+  const el = document.getElementById('initMsg');
+  const es = document.getElementById('initSub');
+  if (el) el.textContent = msg;
+  if (es && sub !== undefined) es.textContent = sub;
+}
+
+function hideOverlay() {
+  const ov = document.getElementById('initOverlay');
+  if (!ov) return;
+  ov.classList.add('fade-out');
+  setTimeout(() => { ov.style.display = 'none'; }, 450);
+}
+
 // ---- Inicializar Supabase ----
 function initSupabase() {
   if (!SUPABASE_KEY) {
-    console.warn('Supabase no configurado.');
+    console.warn('[OTM] Supabase no configurado: SUPABASE_KEY vacía.');
     supabaseReady = false;
     setCloudBadge('error');
     const cs = document.getElementById('cloudStatus');
@@ -858,9 +934,9 @@ function initSupabase() {
   try {
     supabase      = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     supabaseReady = true;
-    console.log('✅ Supabase inicializado correctamente');
+    console.log('[OTM] ✅ Supabase inicializado');
   } catch (err) {
-    console.error('❌ Error al inicializar Supabase:', err);
+    console.error('[OTM] ❌ Error inicializando Supabase:', err);
     supabaseReady = false;
     setCloudBadge('error');
     const cs = document.getElementById('cloudStatus');
@@ -896,86 +972,127 @@ function initializeOTMAvailable() {
 }
 
 /* ================================================================
+   MAPEAR FILAS DEL EXCEL AL FORMATO INTERNO
+   Función centralizada — usada tanto por loadExcelFile (local)
+   como por loadExcelFromSupabase (nube). Una sola fuente de verdad.
+   ================================================================ */
+function mapExcelRows(rows) {
+  return rows.map((r, i) => ({
+    num:      i + 1,
+    centro:   r['UNIDAD PRESTADORA'] || '',
+    servicio: r['SERVICIO'] || '',
+    codigo:   String(r['CÓDIGO PATRIMONIAL'] || ''),
+    nombre:   r['DENOMINACIÓN ESPECÍFICA'] || '',
+    marca:    r['MARCA'] || '',
+    modelo:   r['MODELO'] || '',
+    serie:    r['SERIE'] || '',
+    estado:   r['ESTADO'] || '',
+    cobertura:r['COBERTURA'] || '',
+    otm1_ref: r['PRIMER MP'] || '',
+    otm2_ref: r['SEGUNDO MP'] || '',
+  }));
+}
+
+/* ================================================================
    GUARDAR EXCEL EN SUPABASE STORAGE
-   Se guarda como EXCEL_PATH con upsert:true → siempre reemplaza.
+   — Ruta: raíz del bucket (igual que los PDFs)
+   — upsert:true → siempre reemplaza la versión anterior
+   — Diagnóstico completo en consola
    ================================================================ */
 async function saveExcelToSupabase(file) {
-  if (!supabaseReady || !supabase) return false;
+  if (!supabaseReady || !supabase) {
+    console.warn('[OTM] saveExcelToSupabase: Supabase no disponible.');
+    return false;
+  }
+  console.log(`[OTM] Subiendo Excel a Supabase: bucket=${BUCKET_NAME} archivo=${EXCEL_FILENAME}`);
   try {
-    const { error } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
-      .upload(EXCEL_PATH, file, { upsert: true, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      .upload(EXCEL_FILENAME, file, {
+        upsert: true,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
     if (error) {
-      console.error('Error subiendo Excel a Supabase:', error);
+      console.error('[OTM] ❌ Error subiendo Excel:', JSON.stringify(error, null, 2));
       return false;
     }
-    console.log('✅ Excel guardado en Supabase:', EXCEL_PATH);
+    console.log('[OTM] ✅ Excel guardado en Supabase:', data);
     return true;
   } catch (err) {
-    console.error('Error inesperado subiendo Excel:', err);
+    console.error('[OTM] ❌ Excepción subiendo Excel:', err);
     return false;
   }
 }
 
 /* ================================================================
    CARGAR EXCEL DESDE SUPABASE STORAGE
-   Descarga el archivo binario y lo parsea con SheetJS.
-   Devuelve el array mapeado o null si no existe / hay error.
+   — Descarga desde la raíz del bucket (mismas políticas que PDFs)
+   — Parsea con SheetJS
+   — Devuelve array mapeado, o null si no existe/error
    ================================================================ */
 async function loadExcelFromSupabase() {
-  if (!supabaseReady || !supabase) return null;
+  if (!supabaseReady || !supabase) {
+    console.warn('[OTM] loadExcelFromSupabase: Supabase no disponible.');
+    return null;
+  }
+  console.log(`[OTM] Descargando Excel de Supabase: bucket=${BUCKET_NAME} archivo=${EXCEL_FILENAME}`);
   try {
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
-      .download(EXCEL_PATH);
+      .download(EXCEL_FILENAME);
+
     if (error) {
-      // Archivo no existe aún → es normal en primera ejecución
-      if (error.message && (error.message.includes('not found') || error.message.includes('Object not found') || error.statusCode === 404 || error.status === 404)) {
-        console.log('ℹ️ No hay Excel en Supabase todavía. Usando datos embebidos.');
+      // Clasificar el error para diagnóstico preciso
+      const msg  = (error.message || '').toLowerCase();
+      const code = error.statusCode || error.status || error.error || '';
+      const notFound = msg.includes('not found') || msg.includes('object not found')
+                    || msg.includes('does not exist') || String(code) === '404'
+                    || msg.includes('404');
+      if (notFound) {
+        console.log('[OTM] ℹ️ Excel no encontrado en Supabase (primera carga). Se usarán datos embebidos.');
       } else {
-        console.error('Error descargando Excel de Supabase:', error);
+        // Error real (permisos, red, etc.) — mostrar detalle completo
+        console.error('[OTM] ❌ Error descargando Excel:', JSON.stringify(error, null, 2));
+        console.error('[OTM]    → Verifica que las políticas RLS del bucket permitan SELECT para anon.');
+        console.error(`[OTM]    → Bucket: ${BUCKET_NAME}  Archivo: ${EXCEL_FILENAME}`);
       }
       return null;
     }
+
+    if (!data) {
+      console.error('[OTM] ❌ Download devolvió data=null sin error. Revisar configuración del bucket.');
+      return null;
+    }
+
     // Parsear el Blob con SheetJS
     const arrayBuffer = await data.arrayBuffer();
     const wb    = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows  = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    const mapped = rows.map((r, i) => ({
-      num:      i + 1,
-      centro:   r['UNIDAD PRESTADORA'] || '',
-      servicio: r['SERVICIO'] || '',
-      codigo:   String(r['CÓDIGO PATRIMONIAL'] || ''),
-      nombre:   r['DENOMINACIÓN ESPECÍFICA'] || '',
-      marca:    r['MARCA'] || '',
-      modelo:   r['MODELO'] || '',
-      serie:    r['SERIE'] || '',
-      estado:   r['ESTADO'] || '',
-      cobertura:r['COBERTURA'] || '',
-      otm1_ref: r['PRIMER MP'] || '',
-      otm2_ref: r['SEGUNDO MP'] || '',
-    }));
-    console.log(`✅ Excel cargado desde Supabase: ${mapped.length} registros`);
+    const mapped = mapExcelRows(rows);
+    console.log(`[OTM] ✅ Excel cargado desde Supabase: ${mapped.length} registros`);
     return mapped;
+
   } catch (err) {
-    console.error('Error inesperado cargando Excel desde Supabase:', err);
+    console.error('[OTM] ❌ Excepción cargando Excel desde Supabase:', err);
     return null;
   }
 }
 
 /* ================================================================
    OBTENER FECHA DE ÚLTIMA MODIFICACIÓN DEL EXCEL EN SUPABASE
+   Lista la raíz del bucket y busca el archivo por nombre.
    ================================================================ */
 async function getExcelLastModified() {
   if (!supabaseReady || !supabase) return null;
   try {
+    // Listar raíz del bucket (donde vive el Excel)
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
-      .list('excel', { limit: 10 });
+      .list('', { limit: 200 });
     if (error || !data) return null;
-    const file = data.find(f => f.name === 'data_otm.xlsx');
-    return file ? file.updated_at || file.created_at : null;
+    const file = data.find(f => f.name === EXCEL_FILENAME);
+    return file ? (file.updated_at || file.created_at) : null;
   } catch { return null; }
 }
 
@@ -986,15 +1103,17 @@ async function refreshCloudStatus(source) {
   const cs = document.getElementById('cloudStatus');
   if (!cs) return;
 
-  const lastMod = await getExcelLastModified();
+  const lastMod  = await getExcelLastModified();
   const pdfCount = Object.keys(pdfStore).length;
 
   let excelInfo = '';
   if (lastMod) {
     const d = new Date(lastMod);
-    excelInfo = `Excel actualizado: ${d.toLocaleDateString('es-PE', {day:'2-digit',month:'short',year:'numeric'})}`;
+    excelInfo = `Excel: ${d.toLocaleDateString('es-PE', {day:'2-digit', month:'short', year:'numeric'})}`;
+  } else if (source === 'supabase') {
+    excelInfo = 'Excel cargado desde la nube';
   } else {
-    excelInfo = source === 'supabase' ? 'Excel cargado desde la nube' : 'Excel: datos embebidos (sin versión en la nube aún)';
+    excelInfo = 'Excel: datos embebidos';
   }
 
   cs.textContent = `${excelInfo} · ${pdfCount} OTM en la nube · Sincronizado automáticamente`;
@@ -1017,14 +1136,15 @@ let sortKey      = '';
 let sortDir      = 1;
 let chartCentro, chartServicio;
 
-const OTM_ESPERADAS = 99; // 3 × 33
+const OTM_ESPERADAS = 66; // 2 OTM ejecutadas por equipo × 33 equipos (3er MP pendiente de ejecución)
 
 /* ================================================================
-   INICIALIZACIÓN — Secuencia de arranque completa
+   INICIALIZACIÓN — Secuencia de arranque completa con overlay
    1. Supabase
    2. Excel desde Supabase  (→ fallback: RAW_DATA embebido)
-   3. PDFs desde Supabase
-   4. Render completo
+   3. OTM iniciales + render
+   4. PDFs desde Supabase + re-render
+   5. Ocultar overlay
    ================================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -1034,30 +1154,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     now.toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
 
   /* -- 1. Supabase -- */
+  setInitMsg('Conectando con Supabase…');
   initSupabase();
 
   /* -- 2. Cargar Excel -- */
-  let dataSource = 'embedded';
+  let dataSource  = 'embedded';
   let initialData = RAW_DATA;
 
   if (supabaseReady) {
-    const cs = document.getElementById('cloudStatus');
-    if (cs) cs.textContent = '⏳ Descargando datos del Excel desde la nube…';
+    setInitMsg('Descargando datos del Excel…', 'Recuperando la última versión desde la nube');
     setCloudBadge('loading');
 
     const supabaseData = await loadExcelFromSupabase();
+
     if (supabaseData && supabaseData.length > 0) {
       initialData = supabaseData;
       dataSource  = 'supabase';
       const upEl = document.getElementById('uploadStatus');
-      if (upEl) upEl.textContent = `☁️ Datos actualizados desde Supabase (${supabaseData.length} registros)`;
+      if (upEl) upEl.textContent = `☁️ ${supabaseData.length} registros cargados desde Supabase`;
+      // Ocultar zona de carga de Excel: el usuario no necesita hacer nada
+      const excelZone = document.querySelector('.upload-section');
+      if (excelZone) {
+        excelZone.style.borderColor = 'var(--green)';
+        excelZone.style.background  = 'var(--green-bg)';
+      }
     } else {
+      // Sin Excel en Supabase → mostrar mensaje guía al administrador
       const upEl = document.getElementById('uploadStatus');
-      if (upEl) upEl.textContent = `📋 Datos embebidos activos. Cargue un .xlsx para sincronizar con la nube.`;
+      if (upEl) upEl.textContent = '⬆️ Suba el archivo Excel para activar el dashboard. Solo se hace una vez.';
     }
+  } else {
+    // Sin Supabase → datos embebidos como última instancia
+    const upEl = document.getElementById('uploadStatus');
+    if (upEl) upEl.textContent = '⚠️ Sin conexión a la nube. Usando datos embebidos.';
   }
 
   /* -- 3. OTM disponibles iniciales + datos -- */
+  setInitMsg('Procesando equipos…');
   initializeOTMAvailable();
   processData(initialData);
   initCharts();
@@ -1067,14 +1200,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /* -- 4. PDFs desde Supabase -- */
   if (supabaseReady) {
+    setInitMsg('Cargando OTM desde la nube…', 'Relacionando documentación con cada equipo');
     await loadPDFsFromSupabase();
-    // Re-render para aplicar PDFs recién cargados
     applyFilters();
     updateGauge();
   }
 
-  /* -- 5. Actualizar badge de estado -- */
+  /* -- 5. Estado final y ocultar overlay -- */
   await refreshCloudStatus(dataSource);
+  hideOverlay();
 });
 
 /* ================================================================
@@ -1285,21 +1419,29 @@ function processData(raw) {
 
 /* ================================================================
    RESOLVER ESTADO OTM (se llama en render, no en processData)
-   Devuelve: 'Disponible' | 'Pendiente'
+
+   OTM 1 y OTM 2:
+     'Disponible' → hay PDF cargado o marcado como disponible inicialmente
+     'Pendiente'  → sin PDF
+
+   OTM 3 (3er mantenimiento — pendiente de ejecución):
+     Siempre devuelve 'Pendiente de ejecución', independientemente de si
+     hay un PDF cargado (que sería solo una plantilla preliminar).
+     El PDF SÍ se muestra para descarga; solo el ESTADO cambia.
    ================================================================ */
 function getOtmStatus(serie, num) {
+  if (num === '3') return 'Pendiente de ejecución';
   const key = `${serie}|${num}`;
-  // Verificar si hay un PDF cargado o si está disponible inicialmente
   return pdfStore[key] || otmAvailable[key] ? 'Disponible' : 'Pendiente';
 }
 
 function getDocStatus(serie) {
+  // Solo OTM 1 y OTM 2 determinan el estado documentario ejecutado
   const o1 = getOtmStatus(serie, '1');
   const o2 = getOtmStatus(serie, '2');
-  const o3 = getOtmStatus(serie, '3');
-  const disp = [o1, o2, o3].filter(s => s === 'Disponible').length;
+  const disp = [o1, o2].filter(s => s === 'Disponible').length;
   if (disp === 0) return 'Pendiente';
-  if (disp === 3) return 'Completo';
+  if (disp === 2) return 'Completo';
   return 'Regularización Parcial';
 }
 
@@ -1612,8 +1754,8 @@ function updateCharts() {
 }
 
 /* ================================================================
-   CARGA DE EXCEL (manual, por el administrador)
-   Procesa localmente + guarda en Supabase para persistencia.
+   CARGA DE EXCEL (manual, solo el administrador)
+   Procesa localmente + guarda en Supabase (raíz del bucket).
    ================================================================ */
 function loadExcelFile(event) {
   const file = event.target.files[0];
@@ -1628,22 +1770,9 @@ function loadExcelFile(event) {
       const wb    = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows  = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-      const mapped = rows.map((r, i) => ({
-        num:      i + 1,
-        centro:   r['UNIDAD PRESTADORA'] || '',
-        servicio: r['SERVICIO'] || '',
-        codigo:   String(r['CÓDIGO PATRIMONIAL'] || ''),
-        nombre:   r['DENOMINACIÓN ESPECÍFICA'] || '',
-        marca:    r['MARCA'] || '',
-        modelo:   r['MODELO'] || '',
-        serie:    r['SERIE'] || '',
-        estado:   r['ESTADO'] || '',
-        cobertura:r['COBERTURA'] || '',
-        otm1_ref: r['PRIMER MP'] || '',
-        otm2_ref: r['SEGUNDO MP'] || '',
-      }));
+      const mapped = mapExcelRows(rows);  // función centralizada
 
-      // Procesar datos en el dashboard
+      // 1. Procesar y renderizar en el dashboard
       processData(mapped);
       ['filtCentro','filtServicio','filtCodigo','filtEstado'].forEach(id => {
         const sel = document.getElementById(id);
@@ -1655,25 +1784,34 @@ function loadExcelFile(event) {
       document.getElementById('updateDate').textContent =
         now.toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
 
-      if (upEl) upEl.textContent = `⏳ ${file.name} procesado (${mapped.length} registros). Guardando en la nube…`;
+      if (upEl) upEl.textContent = `⏳ ${file.name} (${mapped.length} registros) — Subiendo a Supabase…`;
 
-      // Guardar en Supabase Storage (reemplaza versión anterior)
+      // 2. Guardar en Supabase (reemplaza versión anterior, raíz del bucket)
       if (supabaseReady) {
         const ok = await saveExcelToSupabase(file);
         if (ok) {
-          if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros · Guardado en Supabase`;
+          if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros guardados en Supabase`;
+          // Estilo confirmatorio en la zona de carga
+          const excelZone = document.querySelector('.upload-section');
+          if (excelZone) {
+            excelZone.style.borderColor = 'var(--green)';
+            excelZone.style.background  = 'var(--green-bg)';
+          }
           await refreshCloudStatus('supabase');
         } else {
-          if (upEl) upEl.textContent = `⚠️ ${file.name} procesado localmente. No se pudo guardar en la nube.`;
+          if (upEl) upEl.textContent =
+            `⚠️ ${file.name} procesado localmente, pero no se pudo guardar en la nube. Revisa la consola.`;
           setCloudBadge('warn');
+          const cs = document.getElementById('cloudStatus');
+          if (cs) cs.textContent = 'Error subiendo Excel. Ver consola del navegador (F12) para diagnóstico.';
         }
       } else {
-        if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros procesados (sin conexión a la nube)`;
+        if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros (sin conexión a la nube)`;
       }
 
     } catch(err) {
-      if (upEl) upEl.textContent = '❌ Error al leer el archivo Excel.';
-      console.error(err);
+      if (upEl) upEl.textContent = '❌ Error al leer el archivo Excel. Verifica el formato.';
+      console.error('[OTM] Error procesando Excel:', err);
     }
   };
   reader.readAsArrayBuffer(file);
