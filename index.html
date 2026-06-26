@@ -111,6 +111,10 @@ body {
   gap: 16px;
   margin-bottom: 24px;
 }
+.upload-row.single-row {
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 24px;
+}
 .upload-section {
   background: var(--white);
   border: 2px dashed var(--sky);
@@ -555,6 +559,8 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
 @media (max-width: 1200px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .upload-row { grid-template-columns: 1fr; }
+  .upload-row.single-row { grid-template-columns: 1fr; }
+  div[style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; }
 }
 @media (max-width: 900px) {
   .container { padding: 16px; }
@@ -563,6 +569,7 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
   .gauge-section { flex-direction: column; }
   .header-inner { padding: 12px 16px; }
   .header-meta { display: none; }
+  div[style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
 }
 </style>
 </head>
@@ -585,8 +592,8 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
 
 <div class="container">
 
-  <!-- ===== UPLOADS (2 zonas) ===== -->
-  <div class="upload-row">
+  <!-- ===== UPLOADS + PANEL DE ESTADO ===== -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
 
     <!-- Zona 1: Excel -->
     <div class="upload-section" onclick="document.getElementById('fileInput').click()">
@@ -610,30 +617,14 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
       <input type="file" id="pdfFileInput" accept=".pdf" multiple onchange="loadPDFFiles(event)">
     </div>
 
-  </div>
-
-  <!-- ===== CONTROLES DE PERSISTENCIA ===== -->
-  <div class="upload-row">
-    
-    <!-- Guardar Estado -->
-    <div class="upload-section" style="border-color: #1A9E5C; background: #F0FAF7;">
-      <div class="upload-icon">💾</div>
+    <!-- Panel informativo de conexión -->
+    <div class="upload-section" style="border-color:var(--sky);background:linear-gradient(135deg,#EBF3FC,#F4F7FB);cursor:default;">
+      <div class="upload-icon">☁️</div>
       <div class="upload-text">
-        <h3>Guardar estado OTM</h3>
-        <p id="saveStatus">Exportar toda la información de OTM a un archivo JSON para compartir o restaurar después.</p>
+        <h3>Almacenamiento en la nube</h3>
+        <p id="cloudStatus">Conectado a Supabase Storage. Los PDFs cargados se sincronizan automáticamente y estarán disponibles en cada sesión.</p>
       </div>
-      <button class="btn-upload green" onclick="saveOTMState()">💾 Guardar Estado</button>
-    </div>
-
-    <!-- Cargar Estado -->
-    <div class="upload-section" style="border-color: #1B5EA8; background: #EBF3FC;">
-      <div class="upload-icon">📂</div>
-      <div class="upload-text">
-        <h3>Restaurar estado OTM</h3>
-        <p id="loadStatus">Cargar un archivo JSON previamente guardado para restaurar toda la información.</p>
-      </div>
-      <button class="btn-upload" onclick="document.getElementById('stateFileInput').click()">📂 Cargar Estado</button>
-      <input type="file" id="stateFileInput" accept=".json" onchange="loadOTMState(event)">
+      <span id="cloudBadge" style="margin-left:auto;flex-shrink:0;background:var(--green-bg);color:var(--green);border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap;">● En línea</span>
     </div>
 
   </div>
@@ -857,6 +848,10 @@ function initSupabase() {
   } catch (err) {
     console.error('❌ Error al inicializar Supabase:', err);
     supabaseReady = false;
+    const badge = document.getElementById('cloudBadge');
+    if (badge) { badge.style.background='var(--red-bg)'; badge.style.color='var(--red)'; badge.textContent='● Sin conexión'; }
+    const cs = document.getElementById('cloudStatus');
+    if (cs) cs.textContent = 'Sin conexión a Supabase. Los PDFs se usarán en memoria local durante esta sesión.';
   }
 }
 
@@ -888,9 +883,6 @@ function initializeOTMAvailable() {
     // OTM 2 y 3 no se establecen (quedan sin disponible)
   });
 }
-
-// ==== ESTADO ESPERADO DE OTM (para restaurar después de cargar JSON) ====
-let expectedOTMState = {};
 
 // ==== DATOS BASE PRECARGADOS DEL EXCEL ====
 const RAW_DATA = [{"num":1,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174652","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0185","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128016-2023","otm2_ref":"170131-2024"},{"num":2,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174651","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0194","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128038-2023","otm2_ref":"170123-2024"},{"num":3,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174649","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0186","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"086077-2023","otm2_ref":"170122-2024"},{"num":4,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174658","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0190","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128015-2023","otm2_ref":"170121-2024"},{"num":5,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174428","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0206","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128044-2023","otm2_ref":"205182-2023"},{"num":6,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000538","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0304","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"175558-2022","otm2_ref":"153208-2023"},{"num":7,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604516","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0320","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"224050-2022","otm2_ref":"126124-2023"},{"num":8,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"02604519","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0319","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147198-2022","otm2_ref":"045318-2023"},{"num":9,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604513","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0304","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199267-2022","otm2_ref":"205301-2023"},{"num":10,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. EMERGENCIA ADULTOS","codigo":"03000175","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0415","estado":"OPERATIVO BUENO","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"17902-2022","otm2_ref":"205306-2023"},{"num":11,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. CUIDADOS INTERMEDIOS ADULTOS","codigo":"02604512","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0305","estado":"INOPERATIVO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199265-2022","otm2_ref":"230576-2023"},{"num":12,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UCI PEDIÁTRICA","codigo":"02604509","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0308","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199273-2022","otm2_ref":"313058-2023"},{"num":13,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604508","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0309","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147211-2022","otm2_ref":"199270-2022"},{"num":14,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174427","nombre":"VENTILADOR VOLUMETRICO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0203","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"234638-2022","otm2_ref":"205312-2023"},{"num":15,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174102","nombre":"VENTILADOR VOLUMETRICO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0178","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"234637-2022","otm2_ref":"205313-2026"},{"num":16,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604504","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0310","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147212-2022","otm2_ref":"205300-2023"},{"num":17,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000172","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0418","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"197897-2022","otm2_ref":"205309-2023"},{"num":18,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000170","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0416","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"197896-2022","otm2_ref":"205307-2023"},{"num":19,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604533","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0360","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147214-2022","otm2_ref":"153930-2023"},{"num":20,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604536","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0362","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147213-2022","otm2_ref":"153932-2023"},{"num":21,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604535","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0365","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147217-2022","otm2_ref":"153934-2023"},{"num":22,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604534","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0366","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-03-13","otm2_ref":"153931-2023"},{"num":23,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174430","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0197","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"034144-2023","otm2_ref":"2024-12-30"},{"num":24,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. CUIDADOS INTENSIVOS GENERALES ADULTOS","codigo":"01174093","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0297","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"225152-2022","otm2_ref":"205305-2023"},{"num":25,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174099","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0174","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"225152-2022","otm2_ref":"205305-2023"},{"num":26,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"CENTRO QUIRÚRGICO Y ANESTESIOLOGÍA","codigo":"01174085","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0326","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"126121-2023","otm2_ref":"205130-2023"},{"num":27,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174094","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0337","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"126120-2023","otm2_ref":"205129-2023"},{"num":28,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174091","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0325","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2025-06-04","otm2_ref":"126119-2023"},{"num":29,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174087","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0331","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"175848-2022","otm2_ref":"126118-2023"},{"num":30,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174086","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0330","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-02-06","otm2_ref":"094818-2024"},{"num":31,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174090","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0294","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-08-23","otm2_ref":"205128-2023"},{"num":32,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174431","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0196","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-08-17","otm2_ref":"126114-2023"}];
@@ -1116,124 +1108,6 @@ async function loadPDFsFromSupabase() {
   } catch (err) {
     console.error('Error cargando PDFs de Supabase:', err);
   }
-}
-
-/* ================================================================
-   GUARDAR Y CARGAR ESTADO OTM (PERSISTENCIA)
-   ================================================================ */
-
-function saveOTMState() {
-  try {
-    // Crear estructura de estado
-    const state = {
-      timestamp: new Date().toISOString(),
-      equipos: [],
-      pdfsInfo: []
-    };
-
-    // Guardar información de cada equipo
-    allData.forEach(equipo => {
-      const serie = equipo.serie;
-      const otm1Status = getOtmStatus(serie, '1');
-      const otm2Status = getOtmStatus(serie, '2');
-      const otm3Status = getOtmStatus(serie, '3');
-      const docStatus = getDocStatus(serie);
-
-      state.equipos.push({
-        serie: serie,
-        codigo: equipo.codigo,
-        otm1: otm1Status,
-        otm2: otm2Status,
-        otm3: otm3Status,
-        documentaryStatus: docStatus
-      });
-    });
-
-    // Guardar información de PDFs (sin el contenido, solo referencias)
-    Object.entries(pdfStore).forEach(([key, value]) => {
-      state.pdfsInfo.push({
-        key: key,
-        filename: value.name
-      });
-    });
-
-    // Crear archivo JSON y descargarlo
-    const json = JSON.stringify(state, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Estado_OTM_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    document.getElementById('saveStatus').textContent = `✅ Estado guardado el ${new Date().toLocaleString('es-PE')}`;
-  } catch (err) {
-    document.getElementById('saveStatus').textContent = '❌ Error al guardar el estado.';
-    console.error(err);
-  }
-}
-
-function loadOTMState(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const state = JSON.parse(e.target.result);
-
-      // Restaurar estado de OTM basado en la información guardada
-      otmAvailable = {}; // Limpiar estado anterior
-      expectedOTMState = {}; // Almacenar estado esperado para PDFs
-
-      if (state.equipos && Array.isArray(state.equipos)) {
-        state.equipos.forEach(equipo => {
-          if (equipo.otm1 === 'Disponible') {
-            otmAvailable[`${equipo.serie}|1`] = true;
-            expectedOTMState[`${equipo.serie}|1`] = true;
-          }
-          if (equipo.otm2 === 'Disponible') {
-            otmAvailable[`${equipo.serie}|2`] = true;
-            expectedOTMState[`${equipo.serie}|2`] = true;
-          }
-          if (equipo.otm3 === 'Disponible') {
-            otmAvailable[`${equipo.serie}|3`] = true;
-            expectedOTMState[`${equipo.serie}|3`] = true;
-          }
-        });
-      }
-
-      // Almacenar referencias de PDFs esperados para buscarlos después
-      if (state.pdfsInfo && Array.isArray(state.pdfsInfo)) {
-        // Crear un mapa de nombres de PDFs esperados para identificación posterior
-        window.expectedPDFFilenames = state.pdfsInfo.map(p => ({
-          key: p.key,
-          filename: p.filename
-        }));
-      } else {
-        window.expectedPDFFilenames = [];
-      }
-
-      // Actualizar UI
-      updateKPIs();
-      updateCharts();
-      updateGauge();
-      renderTable();
-
-      const equipoCount = state.equipos ? state.equipos.length : 0;
-      const otmCount = state.pdfsInfo ? state.pdfsInfo.length : 0;
-      document.getElementById('loadStatus').innerHTML =
-        `✅ Estado restaurado: ${equipoCount} equipos, ${otmCount} OTM disponibles.<br><small>💡 Ahora puede cargar los PDFs nuevamente para restaurarlos completamente.</small>`;
-
-    } catch (err) {
-      document.getElementById('loadStatus').textContent = '❌ Error al leer el archivo de estado.';
-      console.error(err);
-    }
-  };
-  reader.readAsText(file);
 }
 
 /* ================================================================
