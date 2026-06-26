@@ -621,10 +621,10 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
     <div class="upload-section" style="border-color:var(--sky);background:linear-gradient(135deg,#EBF3FC,#F4F7FB);cursor:default;">
       <div class="upload-icon">☁️</div>
       <div class="upload-text">
-        <h3>Almacenamiento en la nube</h3>
-        <p id="cloudStatus">Conectado a Supabase Storage. Los PDFs cargados se sincronizan automáticamente y estarán disponibles en cada sesión.</p>
+        <h3>Estado de sincronización</h3>
+        <p id="cloudStatus">Conectando con Supabase…</p>
       </div>
-      <span id="cloudBadge" style="margin-left:auto;flex-shrink:0;background:var(--green-bg);color:var(--green);border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap;">● En línea</span>
+      <span id="cloudBadge" style="margin-left:auto;flex-shrink:0;background:var(--amber-bg);color:var(--amber);border-radius:50px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap;">● Cargando</span>
     </div>
 
   </div>
@@ -819,48 +819,61 @@ tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gray-light); vertic
 const pdfStore = {};
 
 // ==== CONFIGURACIÓN DE SUPABASE ====
-const SUPABASE_URL = 'https://dvijsgcqliryejqisfsu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_iCdogrsNLz7NhgUgMsFuUA_n7gqaP97'; // Se obtiene del localStorage
-const BUCKET_NAME = 'OTMS';
+const SUPABASE_URL  = 'https://dvijsgcqliryejqisfsu.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_iCdogrsNLz7NhgUgMsFuUA_n7gqaP97';
+const BUCKET_NAME   = 'OTMS';
+const EXCEL_PATH    = 'excel/data_otm.xlsx';   // Ruta fija dentro del bucket OTMS
 
-let supabase = null;
+let supabase      = null;
 let supabaseReady = false;
 
-// Inicializar Supabase
+/* ---- helpers UI de estado ---- */
+function setCloudBadge(estado) {
+  // estado: 'loading' | 'ok' | 'warn' | 'error'
+  const badge = document.getElementById('cloudBadge');
+  const txt   = document.getElementById('cloudStatus');
+  if (!badge) return;
+  const map = {
+    loading: { bg: 'var(--amber-bg)',  color: 'var(--amber)', label: '● Cargando'    },
+    ok:      { bg: 'var(--green-bg)',  color: 'var(--green)', label: '● En línea'    },
+    warn:    { bg: 'var(--amber-bg)',  color: 'var(--amber)', label: '● Advertencia' },
+    error:   { bg: 'var(--red-bg)',    color: 'var(--red)',   label: '● Sin conexión' },
+  };
+  const s = map[estado] || map.warn;
+  badge.style.background = s.bg;
+  badge.style.color      = s.color;
+  badge.textContent      = s.label;
+}
+
+// ---- Inicializar Supabase ----
 function initSupabase() {
   if (!SUPABASE_KEY) {
-    // Si no hay clave guardada, solicitar al usuario
-    const key = prompt('Ingresa tu Supabase ANON_KEY:\n(Se guardará en el navegador para futuras sesiones)');
-    if (key) {
-      localStorage.setItem('supabase_anon_key', key);
-      window.location.reload();
-    } else {
-      console.warn('Supabase no configurado. Los PDFs se usarán en memoria local.');
-      supabaseReady = false;
-      return;
-    }
+    console.warn('Supabase no configurado.');
+    supabaseReady = false;
+    setCloudBadge('error');
+    const cs = document.getElementById('cloudStatus');
+    if (cs) cs.textContent = 'Sin conexión a Supabase. Operando con datos embebidos.';
+    return;
   }
-
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabase      = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     supabaseReady = true;
     console.log('✅ Supabase inicializado correctamente');
   } catch (err) {
     console.error('❌ Error al inicializar Supabase:', err);
     supabaseReady = false;
-    const badge = document.getElementById('cloudBadge');
-    if (badge) { badge.style.background='var(--red-bg)'; badge.style.color='var(--red)'; badge.textContent='● Sin conexión'; }
+    setCloudBadge('error');
     const cs = document.getElementById('cloudStatus');
-    if (cs) cs.textContent = 'Sin conexión a Supabase. Los PDFs se usarán en memoria local durante esta sesión.';
+    if (cs) cs.textContent = 'Sin conexión a Supabase. Operando con datos embebidos.';
   }
 }
 
-// Función para cambiar ANON_KEY si es necesario (llamar desde consola del navegador)
+// Función utilitaria para cambiar ANON_KEY desde consola del navegador
 function changeSupabaseKey() {
   const newKey = prompt('Ingresa tu nueva Supabase ANON_KEY:');
   if (newKey) {
     localStorage.setItem('supabase_anon_key', newKey);
-    alert('ANON_KEY actualizada. Se recargará la página...');
+    alert('ANON_KEY actualizada. Se recargará la página…');
     window.location.reload();
   }
 }
@@ -873,18 +886,124 @@ const equiposConOTM1Disponible = new Set([
   'ASPA-0319', 'ASPA-0310', 'ASPA-0309'
 ]);
 
-// ==== RASTREO DE OTM DISPONIBLES (INICIALMENTE Y DESPUÉS) ====
+// ==== RASTREO DE OTM DISPONIBLES ====
 const otmAvailable = {};
 
-// Inicializar OTM disponibles para equipos especificados
 function initializeOTMAvailable() {
   equiposConOTM1Disponible.forEach(serie => {
-    otmAvailable[`${serie}|1`] = true;  // OTM 1 disponible
-    // OTM 2 y 3 no se establecen (quedan sin disponible)
+    otmAvailable[`${serie}|1`] = true;
   });
 }
 
-// ==== DATOS BASE PRECARGADOS DEL EXCEL ====
+/* ================================================================
+   GUARDAR EXCEL EN SUPABASE STORAGE
+   Se guarda como EXCEL_PATH con upsert:true → siempre reemplaza.
+   ================================================================ */
+async function saveExcelToSupabase(file) {
+  if (!supabaseReady || !supabase) return false;
+  try {
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(EXCEL_PATH, file, { upsert: true, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    if (error) {
+      console.error('Error subiendo Excel a Supabase:', error);
+      return false;
+    }
+    console.log('✅ Excel guardado en Supabase:', EXCEL_PATH);
+    return true;
+  } catch (err) {
+    console.error('Error inesperado subiendo Excel:', err);
+    return false;
+  }
+}
+
+/* ================================================================
+   CARGAR EXCEL DESDE SUPABASE STORAGE
+   Descarga el archivo binario y lo parsea con SheetJS.
+   Devuelve el array mapeado o null si no existe / hay error.
+   ================================================================ */
+async function loadExcelFromSupabase() {
+  if (!supabaseReady || !supabase) return null;
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .download(EXCEL_PATH);
+    if (error) {
+      // Archivo no existe aún → es normal en primera ejecución
+      if (error.message && (error.message.includes('not found') || error.message.includes('Object not found') || error.statusCode === 404 || error.status === 404)) {
+        console.log('ℹ️ No hay Excel en Supabase todavía. Usando datos embebidos.');
+      } else {
+        console.error('Error descargando Excel de Supabase:', error);
+      }
+      return null;
+    }
+    // Parsear el Blob con SheetJS
+    const arrayBuffer = await data.arrayBuffer();
+    const wb    = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows  = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    const mapped = rows.map((r, i) => ({
+      num:      i + 1,
+      centro:   r['UNIDAD PRESTADORA'] || '',
+      servicio: r['SERVICIO'] || '',
+      codigo:   String(r['CÓDIGO PATRIMONIAL'] || ''),
+      nombre:   r['DENOMINACIÓN ESPECÍFICA'] || '',
+      marca:    r['MARCA'] || '',
+      modelo:   r['MODELO'] || '',
+      serie:    r['SERIE'] || '',
+      estado:   r['ESTADO'] || '',
+      cobertura:r['COBERTURA'] || '',
+      otm1_ref: r['PRIMER MP'] || '',
+      otm2_ref: r['SEGUNDO MP'] || '',
+    }));
+    console.log(`✅ Excel cargado desde Supabase: ${mapped.length} registros`);
+    return mapped;
+  } catch (err) {
+    console.error('Error inesperado cargando Excel desde Supabase:', err);
+    return null;
+  }
+}
+
+/* ================================================================
+   OBTENER FECHA DE ÚLTIMA MODIFICACIÓN DEL EXCEL EN SUPABASE
+   ================================================================ */
+async function getExcelLastModified() {
+  if (!supabaseReady || !supabase) return null;
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .list('excel', { limit: 10 });
+    if (error || !data) return null;
+    const file = data.find(f => f.name === 'data_otm.xlsx');
+    return file ? file.updated_at || file.created_at : null;
+  } catch { return null; }
+}
+
+/* ================================================================
+   ACTUALIZAR BADGE DE NUBE CON INFO COMPLETA
+   ================================================================ */
+async function refreshCloudStatus(source) {
+  const cs = document.getElementById('cloudStatus');
+  if (!cs) return;
+
+  const lastMod = await getExcelLastModified();
+  const pdfCount = Object.keys(pdfStore).length;
+
+  let excelInfo = '';
+  if (lastMod) {
+    const d = new Date(lastMod);
+    excelInfo = `Excel actualizado: ${d.toLocaleDateString('es-PE', {day:'2-digit',month:'short',year:'numeric'})}`;
+  } else {
+    excelInfo = source === 'supabase' ? 'Excel cargado desde la nube' : 'Excel: datos embebidos (sin versión en la nube aún)';
+  }
+
+  cs.textContent = `${excelInfo} · ${pdfCount} OTM en la nube · Sincronizado automáticamente`;
+  setCloudBadge(supabaseReady ? 'ok' : 'warn');
+}
+
+/* ================================================================
+   DATOS EMBEBIDOS (Fallback — se usan solo si no hay Excel en Supabase)
+   ================================================================ */
 const RAW_DATA = [{"num":1,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174652","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0185","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128016-2023","otm2_ref":"170131-2024"},{"num":2,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174651","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0194","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128038-2023","otm2_ref":"170123-2024"},{"num":3,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174649","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0186","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"086077-2023","otm2_ref":"170122-2024"},{"num":4,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"01174658","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0190","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128015-2023","otm2_ref":"170121-2024"},{"num":5,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174428","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0206","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"128044-2023","otm2_ref":"205182-2023"},{"num":6,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000538","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0304","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"175558-2022","otm2_ref":"153208-2023"},{"num":7,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604516","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0320","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"224050-2022","otm2_ref":"126124-2023"},{"num":8,"centro":"LIMA NORTE - CALLAO \"LUIS NEGREIROS VEGA\"","servicio":"EMERGENCIA GENERAL","codigo":"02604519","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0319","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147198-2022","otm2_ref":"045318-2023"},{"num":9,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604513","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0304","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199267-2022","otm2_ref":"205301-2023"},{"num":10,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. EMERGENCIA ADULTOS","codigo":"03000175","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0415","estado":"OPERATIVO BUENO","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"17902-2022","otm2_ref":"205306-2023"},{"num":11,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. CUIDADOS INTERMEDIOS ADULTOS","codigo":"02604512","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0305","estado":"INOPERATIVO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199265-2022","otm2_ref":"230576-2023"},{"num":12,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UCI PEDIÁTRICA","codigo":"02604509","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0308","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"199273-2022","otm2_ref":"313058-2023"},{"num":13,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604508","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0309","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147211-2022","otm2_ref":"199270-2022"},{"num":14,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174427","nombre":"VENTILADOR VOLUMETRICO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0203","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"234638-2022","otm2_ref":"205312-2023"},{"num":15,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174102","nombre":"VENTILADOR VOLUMETRICO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0178","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"234637-2022","otm2_ref":"205313-2026"},{"num":16,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604504","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0310","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147212-2022","otm2_ref":"205300-2023"},{"num":17,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000172","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0418","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"197897-2022","otm2_ref":"205309-2023"},{"num":18,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"03000170","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0416","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"197896-2022","otm2_ref":"205307-2023"},{"num":19,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604533","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0360","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147214-2022","otm2_ref":"153930-2023"},{"num":20,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604536","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0362","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147213-2022","otm2_ref":"153932-2023"},{"num":21,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604535","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0365","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"147217-2022","otm2_ref":"153934-2023"},{"num":22,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"02604534","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPA-0366","estado":"OPERATIVO MALO PARA REPARAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-03-13","otm2_ref":"153931-2023"},{"num":23,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"UNIDAD DE CUIDADOS INTENSIVOS","codigo":"01174430","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0197","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"034144-2023","otm2_ref":"2024-12-30"},{"num":24,"centro":"ALBERTO SABOGAL SOLOGUREN","servicio":"S. CUIDADOS INTENSIVOS GENERALES ADULTOS","codigo":"01174093","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0297","estado":"OPERATIVO REGULAR","cobertura":"HNASS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"225152-2022","otm2_ref":"205305-2023"},{"num":25,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174099","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0174","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"225152-2022","otm2_ref":"205305-2023"},{"num":26,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"CENTRO QUIRÚRGICO Y ANESTESIOLOGÍA","codigo":"01174085","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0326","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"126121-2023","otm2_ref":"205130-2023"},{"num":27,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174094","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0337","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"126120-2023","otm2_ref":"205129-2023"},{"num":28,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174091","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0325","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2025-06-04","otm2_ref":"126119-2023"},{"num":29,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174087","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0331","estado":"OPERATIVO REGULAR","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"175848-2022","otm2_ref":"126118-2023"},{"num":30,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174086","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0330","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-02-06","otm2_ref":"094818-2024"},{"num":31,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"HOSPITALIZACIÓN - MEDICINA","codigo":"01174090","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0294","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-08-23","otm2_ref":"205128-2023"},{"num":32,"centro":"OCTAVIO MONGRUT MUÑOZ","servicio":"EMERGENCIA GENERAL","codigo":"01174431","nombre":"VENTILADOR VOLUMETRICO + PCV AVANZADO","marca":"DRÄGER","modelo":"EVITA V600","serie":"ASPC-0196","estado":"OPERATIVO BUENO","cobertura":"EX RDS: TALLER BIOMEDICO - ALTA CRITICIDAD","otm1_ref":"2022-08-17","otm2_ref":"126114-2023"}];
 
 /* ================================================================
@@ -901,27 +1020,61 @@ let chartCentro, chartServicio;
 const OTM_ESPERADAS = 99; // 3 × 33
 
 /* ================================================================
-   INICIALIZACIÓN
+   INICIALIZACIÓN — Secuencia de arranque completa
+   1. Supabase
+   2. Excel desde Supabase  (→ fallback: RAW_DATA embebido)
+   3. PDFs desde Supabase
+   4. Render completo
    ================================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
+
+  /* -- Fecha de cabecera -- */
   const now = new Date();
   document.getElementById('updateDate').textContent =
     now.toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
 
-  // Inicializar Supabase
+  /* -- 1. Supabase -- */
   initSupabase();
 
-  // Cargar PDFs desde Supabase si está disponible
+  /* -- 2. Cargar Excel -- */
+  let dataSource = 'embedded';
+  let initialData = RAW_DATA;
+
   if (supabaseReady) {
-    await loadPDFsFromSupabase();
+    const cs = document.getElementById('cloudStatus');
+    if (cs) cs.textContent = '⏳ Descargando datos del Excel desde la nube…';
+    setCloudBadge('loading');
+
+    const supabaseData = await loadExcelFromSupabase();
+    if (supabaseData && supabaseData.length > 0) {
+      initialData = supabaseData;
+      dataSource  = 'supabase';
+      const upEl = document.getElementById('uploadStatus');
+      if (upEl) upEl.textContent = `☁️ Datos actualizados desde Supabase (${supabaseData.length} registros)`;
+    } else {
+      const upEl = document.getElementById('uploadStatus');
+      if (upEl) upEl.textContent = `📋 Datos embebidos activos. Cargue un .xlsx para sincronizar con la nube.`;
+    }
   }
 
-  initializeOTMAvailable(); // Inicializar estado de OTM
-  processData(RAW_DATA);
+  /* -- 3. OTM disponibles iniciales + datos -- */
+  initializeOTMAvailable();
+  processData(initialData);
   initCharts();
   buildFilters();
   applyFilters();
   setTimeout(updateGauge, 300);
+
+  /* -- 4. PDFs desde Supabase -- */
+  if (supabaseReady) {
+    await loadPDFsFromSupabase();
+    // Re-render para aplicar PDFs recién cargados
+    applyFilters();
+    updateGauge();
+  }
+
+  /* -- 5. Actualizar badge de estado -- */
+  await refreshCloudStatus(dataSource);
 });
 
 /* ================================================================
@@ -1459,13 +1612,18 @@ function updateCharts() {
 }
 
 /* ================================================================
-   CARGA DE EXCEL
+   CARGA DE EXCEL (manual, por el administrador)
+   Procesa localmente + guarda en Supabase para persistencia.
    ================================================================ */
 function loadExcelFile(event) {
   const file = event.target.files[0];
   if (!file) return;
+
+  const upEl = document.getElementById('uploadStatus');
+  if (upEl) upEl.textContent = '⏳ Procesando Excel…';
+
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       const wb    = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -1484,11 +1642,11 @@ function loadExcelFile(event) {
         otm1_ref: r['PRIMER MP'] || '',
         otm2_ref: r['SEGUNDO MP'] || '',
       }));
+
+      // Procesar datos en el dashboard
       processData(mapped);
-      // Reconstruir filtros
       ['filtCentro','filtServicio','filtCodigo','filtEstado'].forEach(id => {
         const sel = document.getElementById(id);
-        const curr = sel.value;
         while (sel.options.length > 1) sel.remove(1);
       });
       buildFilters();
@@ -1496,10 +1654,25 @@ function loadExcelFile(event) {
       const now = new Date();
       document.getElementById('updateDate').textContent =
         now.toLocaleDateString('es-PE', { day:'2-digit', month:'long', year:'numeric' });
-      document.getElementById('uploadStatus').textContent =
-        `✅ ${file.name} — ${mapped.length} registros procesados`;
+
+      if (upEl) upEl.textContent = `⏳ ${file.name} procesado (${mapped.length} registros). Guardando en la nube…`;
+
+      // Guardar en Supabase Storage (reemplaza versión anterior)
+      if (supabaseReady) {
+        const ok = await saveExcelToSupabase(file);
+        if (ok) {
+          if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros · Guardado en Supabase`;
+          await refreshCloudStatus('supabase');
+        } else {
+          if (upEl) upEl.textContent = `⚠️ ${file.name} procesado localmente. No se pudo guardar en la nube.`;
+          setCloudBadge('warn');
+        }
+      } else {
+        if (upEl) upEl.textContent = `✅ ${file.name} — ${mapped.length} registros procesados (sin conexión a la nube)`;
+      }
+
     } catch(err) {
-      document.getElementById('uploadStatus').textContent = '❌ Error al leer el archivo.';
+      if (upEl) upEl.textContent = '❌ Error al leer el archivo Excel.';
       console.error(err);
     }
   };
