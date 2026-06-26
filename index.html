@@ -976,10 +976,14 @@ async function loadPDFFiles(event) {
           .upload(name, file, { upsert: true });
 
         if (uploadError) {
-          console.error(`Error subiendo ${name}:`, uploadError);
-          errors++;
-          continue;
-        }
+  console.error("ERROR COMPLETO:", uploadError);
+  console.error("Mensaje:", uploadError.message);
+  console.error("Status:", uploadError.statusCode);
+  console.error("Error:", uploadError.error);
+  console.error("Detalles:", JSON.stringify(uploadError, null, 2));
+  errors++;
+  continue;
+}
 
         // Obtener URL pública del archivo
         const { data: publicUrlData } = supabase.storage
